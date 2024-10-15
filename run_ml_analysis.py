@@ -1,13 +1,14 @@
 import json
 import logging
 from argparse import ArgumentParser
+from doctest import debug
 from pathlib import Path
 from typing import List, Callable, Any, Dict
 
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
-
+from sklearn.preprocessing import OneHotEncoder
 
 LOGGER = logging.getLogger(__name__)
 
@@ -133,6 +134,9 @@ def parse_config(config_path: Path) -> dict:
         return str(v)
     parsed_config = parse_config_entry(config_key, config_data, parsed_config, [value_required, as_str])
 
+    config_key = "categorical_cols"
+    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_empty_list, check_list])
+
     # Warn the user of any unused entries in the config file
     if len(config_data) > 0:
         for k in config_data.keys():
@@ -171,7 +175,30 @@ def process_df_pre_analysis(df: pd.DataFrame, config: dict) -> pd.DataFrame:
     return df
 
 
-def main(in_path: Path, out_path: Path, config: Path, debug: bool):
+def process_df_post_split(train_df: pd.DataFrame, test_df: pd.DataFrame, config: dict):
+    # Explicitly OneHot Encode any columns specified as categorical in the config
+    explicit_cats = config.get('categorical_cols')
+
+    ohe = OneHotEncoder(drop='if_binary', handle_unknown='ignore')
+    train_cat_subdf = train_df.loc[:, explicit_cats]
+    train_cat_subdf = ohe.fit_transform(train_cat_subdf)
+    test_cat_subdf = test_df.loc[:, explicit_cats]
+    test_cat_subdf = ohe.transform(test_cat_subdf)
+
+    # Overwrite the original dataframes with these new features
+    new_cols = ohe.get_feature_names_out(explicit_cats)
+    train_df = train_df.drop(columns=explicit_cats)
+    train_df[new_cols] = train_cat_subdf.toarray()
+    test_df = test_df.drop(columns=explicit_cats)
+    test_df[new_cols] = test_cat_subdf.toarray()
+
+    if debug:
+        train_df.to_csv('debug/train_explicit_cat_processed.tsv', sep='\t')
+        test_df.to_csv('debug/test_explicit_cat_processed.tsv', sep='\t')
+
+
+
+def main(in_path: Path, out_path: Path, config: Path):
     # Parse the configuration file
     config = parse_config(config)
 
@@ -186,7 +213,7 @@ def main(in_path: Path, out_path: Path, config: Path, debug: bool):
     df = process_df_pre_analysis(df, config)
 
     if debug:
-        presplit_out = "presplit.tsv"
+        presplit_out = "debug/presplit.tsv"
         LOGGER.debug(f"Saving pre-split dataset to {presplit_out}")
         df.to_csv(presplit_out, sep='\t')
 
@@ -207,6 +234,14 @@ def main(in_path: Path, out_path: Path, config: Path, debug: bool):
         # If debugging, report the sizes
         LOGGER.debug(f"Test/Train ration (split {i}): {len(test_idx)}/{len(train_idx)}")
 
+        # Split off the target column from the rest
+        train_x = train_df.drop(columns=[target_column])
+        test_x = test_df.drop(columns=[target_column])
+        train_y = train_df.loc[:, target_column]
+        test_y = test_df.loc[:, target_column]
+
+        # Do post-split processing
+        process_df_post_split(train_x, test_x, config)
 
 
 if __name__ == "__main__":
@@ -241,7 +276,8 @@ if __name__ == "__main__":
         style='{',
         datefmt="%H:%M:%S"
     )
-    if argvs.get('debug', False):
+    debug = argvs.pop('debug', False)
+    if debug:
         LOGGER.setLevel(logging.DEBUG)
     else:
         LOGGER.setLevel(logging.INFO)

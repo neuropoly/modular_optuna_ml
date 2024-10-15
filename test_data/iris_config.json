@@ -5,5 +5,8 @@
   "drop_columns": [
     "Unnamed: 0"
   ],
-  "target_column": "target"
+  "target_column": "target",
+  "categorical_cols": [
+    "color"
+  ]
 }

@@ -193,7 +193,7 @@ def process_df_pre_analysis(df: pd.DataFrame, config: dict) -> pd.DataFrame:
     return df
 
 
-def main(in_path: Path, out_path: Path, config: Path):
+def main(in_path: Path, out_path: Path, config: Path, debug: bool):
     # Parse the configuration file
     config = parse_config(config)
 
@@ -207,8 +207,10 @@ def main(in_path: Path, out_path: Path, config: Path):
     # Process the dataframe with any operations that should be done pre-split
     df = process_df_pre_analysis(df, config)
 
-    # TODO: Remove
-    df.to_csv("tmp.tsv", sep='\t')
+    if debug:
+        presplit_out = "presplit.tsv"
+        logging.debug(f"Saving pre-split dataset to {presplit_out}")
+        df.to_csv(presplit_out, sep='\t')
 
     # Generate 10 different train-test splits
     no_replicates = config.pop('no_replicates', 10)
@@ -260,7 +262,7 @@ if __name__ == "__main__":
     argvs = parser.parse_args().__dict__
 
     # Enable debug logging if requested
-    debug = argvs.pop('debug', False)
+    debug = argvs.get('debug', False)
     if debug:
         logging.root.setLevel(logging.DEBUG)
 

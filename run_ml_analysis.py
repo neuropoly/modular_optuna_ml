@@ -7,7 +7,7 @@ from typing import Tuple, List, Callable, Any, Dict, NoReturn
 
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 
 
 def parse_config_entry(config_key: str, json_dict: dict, config_dict: dict, checks: List[Callable[[Any, Dict], Any]]):
@@ -120,30 +120,6 @@ def parse_config(config_path: Path) -> dict:
     config_key = "no_crosses"
     parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_repeats, check_int])
 
-    # Get the desired size of test replicates. Defaults to 1/n, where n is the number of replicates
-    config_key = "test_size"
-    def default_rep_size(v, c):
-        if v is None:
-            no_replicates = c['no_replicates']
-            default = 1 / no_replicates
-            logging.warning(
-                f"'{config_key}' was not specified in the configuration file, defaulting to 1/{no_replicates}.")
-            return default
-        return v
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_rep_size, check_float])
-
-    # Get the desired size of validation replicates. Defaults to 1/n, where n is the number of replicates
-    config_key = "validation_size"
-    def default_cross_size(v, c):
-        if v is None:
-            no_crosses = c['no_crosses']
-            default = 1 / no_crosses
-            logging.warning(
-                f"'{config_key}' was not specified in the configuration file, defaulting to 1/{no_crosses}.")
-            return default
-        return v
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_cross_size, check_float])
-
     # Get the desired size of validation replicates. Defaults to 1/n, where n is the number of replicates
     config_key = "target_column"
     def value_required(v, _):
@@ -212,27 +188,23 @@ def main(in_path: Path, out_path: Path, config: Path, debug: bool):
         logging.debug(f"Saving pre-split dataset to {presplit_out}")
         df.to_csv(presplit_out, sep='\t')
 
-    # Generate the requested number of different train-test splits
+    # Generate the requested number of different train-test split workspaces
     no_replicates = config.pop('no_replicates')
-    replicate_seeds = np.random.randint(
-        0, np.iinfo(np.int32).max, size=no_replicates
-    )
-    replicate_idxs_train_test = []
-    test_size = config.pop("test_size")
-    for i in range(no_replicates):
-        train_idx, test_idx = train_test_split(df.index, test_size=test_size)
-        replicate_idxs_train_test.append((train_idx, test_idx))
-
-    logging.debug(f"Training dataset sizes: {[len(x[0]) for x in replicate_idxs_train_test]}")
-    logging.debug(f"Testing dataset sizes: {[len(x[1]) for x in replicate_idxs_train_test]}")
+    replicate_seeds = np.random.randint(0, np.iinfo(np.int32).max, size=no_replicates)
+    skf_splitter = StratifiedKFold(n_splits=no_replicates, random_state=init_seed, shuffle=True)
 
     # Run the analysis n time with the specified replicates
-    for i, s in enumerate(replicate_seeds):
+    target_column = config.pop('target_column')
+    for i, (train_idx, test_idx) in enumerate(skf_splitter.split(df, df.loc[:, target_column])):
         # Set up the workspace for this replicate
+        s = replicate_seeds[i]
         np.random.seed(s)
-        train_idx, test_idx = replicate_idxs_train_test[i]
         train_df = df.loc[train_idx, :]
         test_df = df.loc[test_idx, :]
+
+        # If debugging, report the sizes
+        logging.debug(f"Test/Train ration (split {i}): {len(test_idx)}/{len(train_idx)}")
+
 
 
 if __name__ == "__main__":

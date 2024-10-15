@@ -212,8 +212,8 @@ def main(in_path: Path, out_path: Path, config: Path, debug: bool):
         logging.debug(f"Saving pre-split dataset to {presplit_out}")
         df.to_csv(presplit_out, sep='\t')
 
-    # Generate 10 different train-test splits
-    no_replicates = config.pop('no_replicates', 10)
+    # Generate the requested number of different train-test splits
+    no_replicates = config.pop('no_replicates')
     replicate_seeds = np.random.randint(
         0, np.iinfo(np.int32).max, size=no_replicates
     )

@@ -137,6 +137,14 @@ def parse_config(config_path: Path) -> dict:
     config_key = "categorical_cols"
     parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_empty_list, check_list])
 
+    config_key = "categorical_threshold"
+    def int_or_none(v, _):
+        if v is not None and type(v) is not int:
+            LOGGER.error(f"Config value '{config_key}' must be an integer or left blank. Terminating.")
+            raise ValueError()
+        return v
+    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [int_or_none])
+
     # Warn the user of any unused entries in the config file
     if len(config_data) > 0:
         for k in config_data.keys():
@@ -176,20 +184,29 @@ def process_df_pre_analysis(df: pd.DataFrame, config: dict) -> pd.DataFrame:
 
 
 def process_df_post_split(train_df: pd.DataFrame, test_df: pd.DataFrame, config: dict):
-    # Explicitly OneHot Encode any columns specified as categorical in the config
+    # Identify any categorical columns in the dataset
     explicit_cats = config.get('categorical_cols')
+    detected_cats = []
+    # Identify any other categorical column/s in the dataset automatically if the user requested it
+    cat_threshold = config.get("categorical_threshold")
+    if cat_threshold is not None:
+        # Identify the categorical columns in question
+        nunique_vals = train_df.nunique(axis=0, dropna=True)
+        detected_cats = train_df.loc[:, nunique_vals <= cat_threshold].columns
+        LOGGER.debug(f"Auto-detected categorical columns: {detected_cats}")
+    cat_columns = [*explicit_cats, *detected_cats]
 
     ohe = OneHotEncoder(drop='if_binary', handle_unknown='ignore')
-    train_cat_subdf = train_df.loc[:, explicit_cats]
+    train_cat_subdf = train_df.loc[:, cat_columns]
     train_cat_subdf = ohe.fit_transform(train_cat_subdf)
-    test_cat_subdf = test_df.loc[:, explicit_cats]
+    test_cat_subdf = test_df.loc[:, cat_columns]
     test_cat_subdf = ohe.transform(test_cat_subdf)
 
     # Overwrite the original dataframes with these new features
-    new_cols = ohe.get_feature_names_out(explicit_cats)
-    train_df = train_df.drop(columns=explicit_cats)
+    new_cols = ohe.get_feature_names_out(cat_columns)
+    train_df = train_df.drop(columns=cat_columns)
     train_df[new_cols] = train_cat_subdf.toarray()
-    test_df = test_df.drop(columns=explicit_cats)
+    test_df = test_df.drop(columns=cat_columns)
     test_df[new_cols] = test_cat_subdf.toarray()
 
     if debug:

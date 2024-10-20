@@ -239,23 +239,21 @@ def main(in_path: Path, out_path: Path, config: Path):
     replicate_seeds = np.random.randint(0, np.iinfo(np.int32).max, size=no_replicates)
     skf_splitter = StratifiedKFold(n_splits=no_replicates, random_state=init_seed, shuffle=True)
 
-    # Run the analysis n time with the specified replicates
+    # Run the analysis n times with the specified replicates
     target_column = config.pop('target_column')
-    for i, (train_idx, test_idx) in enumerate(skf_splitter.split(df, df.loc[:, target_column])):
+    x = df.drop(columns=[target_column])
+    y = df.loc[:, target_column]
+    for i, (train_idx, test_idx) in enumerate(skf_splitter.split(df, y)):
         # Set up the workspace for this replicate
         s = replicate_seeds[i]
         np.random.seed(s)
-        train_df = df.loc[train_idx, :]
-        test_df = df.loc[test_idx, :]
+        train_x = x.loc[train_idx, :]
+        test_x = x.loc[test_idx, :]
+        train_y = y.loc[train_idx]
+        test_y = y.loc[test_idx]
 
         # If debugging, report the sizes
         LOGGER.debug(f"Test/Train ration (split {i}): {len(test_idx)}/{len(train_idx)}")
-
-        # Split off the target column from the rest
-        train_x = train_df.drop(columns=[target_column])
-        test_x = test_df.drop(columns=[target_column])
-        train_y = train_df.loc[:, target_column]
-        test_y = test_df.loc[:, target_column]
 
         # Do post-split processing
         process_df_post_split(train_x, test_x, config)

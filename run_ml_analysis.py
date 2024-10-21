@@ -7,6 +7,7 @@ from typing import List, Callable, Any, Dict
 
 import numpy as np
 import pandas as pd
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import OneHotEncoder
 
@@ -196,23 +197,46 @@ def process_df_post_split(train_df: pd.DataFrame, test_df: pd.DataFrame, config:
         LOGGER.debug(f"Auto-detected categorical columns: {detected_cats}")
     cat_columns = [*explicit_cats, *detected_cats]
 
+    # Mark the rest as continuous for later
+    con_columns = list(train_df.drop(columns=cat_columns).columns)
+
+    train_df, test_df = process_categorical(cat_columns, train_df, test_df)
+
+
+def process_categorical(columns: list, test_df: pd.DataFrame, train_df: pd.DataFrame):
+    """
+    Processes the categorical columns in a pair of dataframes, via imputation and OHE
+    :param columns: The categorical columns in the dataframes
+    :param train_df: The training data, used for fitting our processors
+    :param test_df:  The testing data, which will only have processing applied to it
+    :return: The modified versions of the original dataframes post-processing
+    """
+    # Isolate the categorical columns from the rest of the data
+    train_cat_subdf = train_df.loc[:, columns]
+    test_cat_subdf = test_df.loc[:, columns]
+
+    # Apply imputation via mode to each column
+    imp = SimpleImputer(strategy='most_frequent')
+    train_cat_subdf = imp.fit_transform(train_cat_subdf)
+    test_cat_subdf = imp.transform(test_cat_subdf)
+
+    # Encode the categorical columns into OneHot form
     ohe = OneHotEncoder(drop='if_binary', handle_unknown='ignore')
-    train_cat_subdf = train_df.loc[:, cat_columns]
     train_cat_subdf = ohe.fit_transform(train_cat_subdf)
-    test_cat_subdf = test_df.loc[:, cat_columns]
     test_cat_subdf = ohe.transform(test_cat_subdf)
 
     # Overwrite the original dataframes with these new features
-    new_cols = ohe.get_feature_names_out(cat_columns)
-    train_df = train_df.drop(columns=cat_columns)
+    new_cols = ohe.get_feature_names_out(columns)
+    train_df = train_df.drop(columns=columns)
     train_df[new_cols] = train_cat_subdf.toarray()
-    test_df = test_df.drop(columns=cat_columns)
+    test_df = test_df.drop(columns=columns)
     test_df[new_cols] = test_cat_subdf.toarray()
 
+    # Output the resulting dataframes post-processing if debug is on
     if debug:
         train_df.to_csv('debug/train_explicit_cat_processed.tsv', sep='\t')
         test_df.to_csv('debug/test_explicit_cat_processed.tsv', sep='\t')
-
+    return train_df, test_df
 
 
 def main(in_path: Path, out_path: Path, config: Path):

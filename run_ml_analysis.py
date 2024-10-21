@@ -157,6 +157,12 @@ def parse_config(config_path: Path) -> dict:
 
 
 def process_df_pre_analysis(df: pd.DataFrame, config: dict) -> pd.DataFrame:
+    """
+    Runs any pre-processing which can be done before splitting into train-test subsets
+    :param df: The dataframe to process
+    :param config: The configuration passed to the main file earlier.
+    :return: The modified train dataframes, post-processing
+    """
     # Drop any columns requested by the user
     drop_cols = config.pop('drop_columns', [])
     df = df.drop(columns=drop_cols)
@@ -185,6 +191,13 @@ def process_df_pre_analysis(df: pd.DataFrame, config: dict) -> pd.DataFrame:
 
 
 def process_df_post_split(train_df: pd.DataFrame, test_df: pd.DataFrame, config: dict):
+    """
+    Runs any remaining pre-processing to be done, after the initial data split
+    :param train_df: The training data to fit any transforms on
+    :param test_df: The testing data, on which transforms will only be applied to
+    :param config: The configuration passed to the main file earlier.
+    :return: The modified train and test dataframes, post-processing
+    """
     # Identify any categorical columns in the dataset
     explicit_cats = config.get('categorical_cols')
     detected_cats = []
@@ -205,6 +218,9 @@ def process_df_post_split(train_df: pd.DataFrame, test_df: pd.DataFrame, config:
 
     # Run pre-processing on the continuous columns
     train_df, test_df = process_continuous(train_df, test_df)
+
+    # Return the result
+    return train_df, test_df
 
 
 def process_categorical(columns: list, test_df: pd.DataFrame, train_df: pd.DataFrame):
@@ -319,7 +335,7 @@ def main(in_path: Path, out_path: Path, config: Path):
         LOGGER.debug(f"Test/Train ration (split {i}): {len(test_idx)}/{len(train_idx)}")
 
         # Do post-split processing
-        process_df_post_split(train_x, test_x, config)
+        train_x, test_x = process_df_post_split(train_x, test_x, config)
 
 
 if __name__ == "__main__":

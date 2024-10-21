@@ -1,0 +1,22 @@
+[
+  {
+    "label": "logistic_regression",
+    "model": "LogisticRegression",
+    "parameters": {
+      "penalty": ["l1", "l2", "elasticnet", null],
+      "solver": "saga",
+      "l1_c": {
+        "type": "float",
+        "log": true,
+        "low": 1e-3,
+        "high": 1e3
+      },
+      "l2_c": {
+        "type": "float",
+        "log": true,
+        "low": 1e-3,
+        "high": 1e3
+      }
+    }
+  }
+]

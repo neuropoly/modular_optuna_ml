@@ -2,6 +2,7 @@ import json
 import logging
 from argparse import ArgumentParser
 from doctest import debug
+from inspect import isclass
 from pathlib import Path
 from typing import List, Callable, Any, Dict
 
@@ -11,10 +12,12 @@ from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+from models import MANAGER_MAP
+from models.utils import OptunaModelManager
+
 LOGGER = logging.getLogger(__name__)
 
-
-def parse_config_entry(config_key: str, json_dict: dict, config_dict: dict, checks: List[Callable[[Any, Dict], Any]]):
+def parse_data_config_entry(config_key: str, json_dict: dict, config_dict: dict, checks: List[Callable[[Any, Dict], Any]]):
     """
     Automatically parses a key contained within the JSON file, running any checks requested by the user in the process
     :param config_key: The key to query for within the JSON file
@@ -34,22 +37,9 @@ def parse_config_entry(config_key: str, json_dict: dict, config_dict: dict, chec
     return new_dict
 
 
-def parse_config(config_path: Path) -> dict:
-    # Check to confirm the file exists and is a valid file
-    if not config_path.exists():
-        LOGGER.error("JSON configuration file designated was not found; terminating")
-        raise FileNotFoundError()
-    if not config_path.is_file():
-        LOGGER.error("JSON configuration file specified was a directory, not a file; terminating")
-        raise TypeError()
-
-    # Attempt to load the files contents w/ JSON
-    with open(config_path) as json_file:
-        try:
-            config_data = json.load(json_file)
-        except Exception as e:
-            LOGGER.error("Failed to load JSON file, see error below; terminating")
-            raise e
+def parse_data_config(config_path: Path) -> dict:
+    # Load the JSON with some validation
+    config_data = load_json_with_validation(config_path)
 
     # If the JSON is not coded as a dictionary, raise an error
     if type(config_data) is not dict:
@@ -72,7 +62,7 @@ def parse_config(config_path: Path) -> dict:
             LOGGER.error(f"'{config_key}' specified in the configuration file was not an integer; terminating")
             raise TypeError
         return v
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_seed, check_int])
+    parsed_config = parse_data_config_entry(config_key, config_data, parsed_config, [default_seed, check_int])
 
     # Get the list of columns to explicitly drop, if any
     config_key = "drop_columns"
@@ -87,7 +77,7 @@ def parse_config(config_path: Path) -> dict:
             LOGGER.error(f"'{config_key}' specified in the configuration file was not a list; terminating")
             raise TypeError
         return v
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_empty_list, check_list])
+    parsed_config = parse_data_config_entry(config_key, config_data, parsed_config, [default_empty_list, check_list])
 
 
     # Get the threshold of nullity required to automatically drop a column
@@ -103,11 +93,11 @@ def parse_config(config_path: Path) -> dict:
             LOGGER.error(f"'{config_key}' specified in the configuration file was not a float; terminating")
             raise TypeError
         return v
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_nullity, check_float])
+    parsed_config = parse_data_config_entry(config_key, config_data, parsed_config, [default_nullity, check_float])
 
     # Get the threshold of nullity required to automatically drop a row (sample)
     config_key = "row_nullity"
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_nullity, check_float])
+    parsed_config = parse_data_config_entry(config_key, config_data, parsed_config, [default_nullity, check_float])
 
     # Get the number of replicates desired
     config_key = "no_replicates"
@@ -118,11 +108,11 @@ def parse_config(config_path: Path) -> dict:
                 f"'{config_key}' was not specified in the configuration file, defaulting to {default}.")
             return default
         return v
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_repeats, check_int])
+    parsed_config = parse_data_config_entry(config_key, config_data, parsed_config, [default_repeats, check_int])
 
     # Get the number of cross-validations desired
     config_key = "no_crosses"
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_repeats, check_int])
+    parsed_config = parse_data_config_entry(config_key, config_data, parsed_config, [default_repeats, check_int])
 
     # Get the desired size of validation replicates. Defaults to 1/n, where n is the number of replicates
     config_key = "target_column"
@@ -133,10 +123,10 @@ def parse_config(config_path: Path) -> dict:
         return v
     def as_str(v, _):
         return str(v)
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [value_required, as_str])
+    parsed_config = parse_data_config_entry(config_key, config_data, parsed_config, [value_required, as_str])
 
     config_key = "categorical_cols"
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [default_empty_list, check_list])
+    parsed_config = parse_data_config_entry(config_key, config_data, parsed_config, [default_empty_list, check_list])
 
     config_key = "categorical_threshold"
     def int_or_none(v, _):
@@ -144,7 +134,7 @@ def parse_config(config_path: Path) -> dict:
             LOGGER.error(f"Config value '{config_key}' must be an integer or left blank. Terminating.")
             raise ValueError()
         return v
-    parsed_config = parse_config_entry(config_key, config_data, parsed_config, [int_or_none])
+    parsed_config = parse_data_config_entry(config_key, config_data, parsed_config, [int_or_none])
 
     # Warn the user of any unused entries in the config file
     if len(config_data) > 0:
@@ -154,6 +144,62 @@ def parse_config(config_path: Path) -> dict:
             )
 
     return parsed_config
+
+
+def parse_model_config(config_path: Path) -> dict:
+    # Load the JSON with some validation
+    config_data = load_json_with_validation(config_path)
+
+    # If the JSON is not coded as a list, raise an error
+    if type(config_data) is not list:
+        LOGGER.error(f"JSON should be formatted as a list, was formatted as a {type(config_data)}; terminating")
+        raise TypeError
+
+    # Iterate through the list to parse the results
+    optuna_managers = {}
+    for i, entry in enumerate(config_data):
+        # Get the label, if one is given
+        label = entry.pop('label', f"Unnamed [{i}]")
+
+        # Terminate if any entry does not reference a valid model type
+        manager_class = dict(entry).pop('model', None)
+        manager_class = MANAGER_MAP.get(manager_class, None)
+        if manager_class is None:
+            raise ValueError(f"Entry '{label}' did not designate a valid model, terminating!")
+
+        # Terminate if the manager class is not a subclass of OptunaModelManager
+        if not isclass(manager_class) or not issubclass(manager_class, OptunaModelManager):
+            raise ValueError(
+                f"Manager class for model entry '{label}' is not a subclass of OptunaModelManager.")
+
+        # Confirm the parameters exist
+        params = entry.pop('parameters', None)
+        if params is None:
+            raise ValueError(f"Entry '{label}' did not specify parameters")
+
+        # Save the results
+        optuna_managers[label] = manager_class(**params)
+
+    # Return the result
+    return optuna_managers
+
+
+def load_json_with_validation(json_path):
+    # Check to confirm the file exists and is a valid file
+    if not json_path.exists():
+        LOGGER.error("JSON configuration file designated was not found; terminating")
+        raise FileNotFoundError()
+    if not json_path.is_file():
+        LOGGER.error("JSON configuration file specified was a directory, not a file; terminating")
+        raise TypeError()
+    # Attempt to load the files contents w/ JSON
+    with open(json_path) as json_file:
+        try:
+            json_data = json.load(json_file)
+        except Exception as e:
+            LOGGER.error("Failed to load JSON file, see error below; terminating")
+            raise e
+    return json_data
 
 
 def process_df_pre_analysis(df: pd.DataFrame, config: dict) -> pd.DataFrame:
@@ -294,19 +340,22 @@ def process_continuous(test_df: pd.DataFrame, train_df: pd.DataFrame):
     return train_df, test_df
 
 
-def main(in_path: Path, out_path: Path, config: Path):
-    # Parse the configuration file
-    config = parse_config(config)
+def main(in_path: Path, out_path: Path, data_config: Path, model_config: Path):
+    # Parse the data configuration file
+    data_config = parse_data_config(data_config)
+
+    # Load the model configuration file
+    model_config = parse_model_config(model_config)
 
     # Control for RNG before proceeding
-    init_seed = config.pop('random_seed', 71554)
+    init_seed = data_config.pop('random_seed', 71554)
     np.random.seed(init_seed)
 
     # Attempt to load the data from the input file
     df = pd.read_csv(in_path, sep='\t')
 
     # Process the dataframe with any operations that should be done pre-split
-    df = process_df_pre_analysis(df, config)
+    df = process_df_pre_analysis(df, data_config)
 
     if debug:
         presplit_out = "debug/presplit.tsv"
@@ -314,12 +363,12 @@ def main(in_path: Path, out_path: Path, config: Path):
         df.to_csv(presplit_out, sep='\t')
 
     # Generate the requested number of different train-test split workspaces
-    no_replicates = config.pop('no_replicates')
+    no_replicates = data_config.pop('no_replicates')
     replicate_seeds = np.random.randint(0, np.iinfo(np.int32).max, size=no_replicates)
     skf_splitter = StratifiedKFold(n_splits=no_replicates, random_state=init_seed, shuffle=True)
 
     # Run the analysis n times with the specified replicates
-    target_column = config.pop('target_column')
+    target_column = data_config.pop('target_column')
     x = df.drop(columns=[target_column])
     y = df.loc[:, target_column]
     for i, (train_idx, test_idx) in enumerate(skf_splitter.split(df, y)):
@@ -335,7 +384,11 @@ def main(in_path: Path, out_path: Path, config: Path):
         LOGGER.debug(f"Test/Train ration (split {i}): {len(test_idx)}/{len(train_idx)}")
 
         # Do post-split processing
-        train_x, test_x = process_df_post_split(train_x, test_x, config)
+        train_x, test_x = process_df_post_split(train_x, test_x, data_config)
+
+        # Run an ML study using this data
+        for label, manager in model_config.items():
+            pass
 
 
 if __name__ == "__main__":
@@ -354,8 +407,12 @@ if __name__ == "__main__":
         help="Where the results of the analysis should be stored (in tsv format)"
     )
     parser.add_argument(
-        '-c', '--config', default='config.json', type=Path,
-        help="Configuration file in JSON format"
+        '-d', '--data_config', default='data_config.json', type=Path,
+        help="Data processing configuration file in JSON format"
+    )
+    parser.add_argument(
+        '-m', '--model_config', default='model_config.json', type=Path,
+        help="Machine Learning Model configuration file in JSON format"
     )
     parser.add_argument(
         '--debug', action='store_true',

@@ -7,9 +7,9 @@ from typing import List, Callable, Any, Dict
 
 import numpy as np
 import pandas as pd
-from sklearn.impute import SimpleImputer
+from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 LOGGER = logging.getLogger(__name__)
 
@@ -200,7 +200,11 @@ def process_df_post_split(train_df: pd.DataFrame, test_df: pd.DataFrame, config:
     # Mark the rest as continuous for later
     con_columns = list(train_df.drop(columns=cat_columns).columns)
 
+    # Run pre-processing on the categorical columns
     train_df, test_df = process_categorical(cat_columns, train_df, test_df)
+
+    # Run pre-processing on the continuous columns
+    train_df, test_df = process_continuous(train_df, test_df)
 
 
 def process_categorical(columns: list, test_df: pd.DataFrame, train_df: pd.DataFrame):
@@ -236,6 +240,41 @@ def process_categorical(columns: list, test_df: pd.DataFrame, train_df: pd.DataF
     if debug:
         train_df.to_csv('debug/train_explicit_cat_processed.tsv', sep='\t')
         test_df.to_csv('debug/test_explicit_cat_processed.tsv', sep='\t')
+    return train_df, test_df
+
+
+def process_continuous(test_df: pd.DataFrame, train_df: pd.DataFrame):
+    """
+    Processes all columns in a pair of dataframes by standardizing and imputing missing values
+    :param train_df: The training data, used for fitting our processors
+    :param test_df:  The testing data, which will only have processing applied to it
+    :return: The modified versions of the original dataframes post-processing
+    """
+    # Save the columns for later
+    columns = train_df.columns
+
+    # Normalize all values in the dataset pre-imputation
+    standardizer = StandardScaler()
+    train_df = standardizer.fit_transform(train_df)
+    test_df = standardizer.transform(test_df)
+
+    # Impute any remaining values via KNN imputation (5 neighbors)
+    knn_imp = KNNImputer(n_neighbors=5)
+    train_df = knn_imp.fit_transform(train_df)
+    test_df = knn_imp.transform(test_df)
+
+    # Re-normalize all values to control for any distributions swings caused by imputation
+    train_df = standardizer.fit_transform(train_df)
+    test_df = standardizer.transform(test_df)
+
+    # Format everything as a dataframe again
+    train_df = pd.DataFrame(data=train_df, columns=columns)
+    test_df = pd.DataFrame(data=test_df, columns=columns)
+
+    # Output the resulting dataframes post-processing if debug is on
+    if debug:
+        train_df.to_csv('debug/train_explicit_con_processed.tsv', sep='\t')
+        test_df.to_csv('debug/test_explicit_con_processed.tsv', sep='\t')
     return train_df, test_df
 
 

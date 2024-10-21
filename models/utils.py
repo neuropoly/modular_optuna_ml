@@ -4,7 +4,7 @@ from typing import Any
 from optuna import Trial, Study
 
 
-class OptunaModelManager(ABC):
+class OptunaModelFactory(ABC):
     """
     A factory for producing Optuna-tunable models
     """
@@ -60,7 +60,7 @@ class OptunaModelManager(ABC):
         # By default, just parse all key-word arguments into a 'trial_closures' parameter to manage later
         self.trial_closures = {}
         for k, v in kwargs.items():
-            self.trial_closures[k] = OptunaModelManager.optuna_trial_param_parser(k, v)
+            self.trial_closures[k] = OptunaModelFactory.optuna_trial_param_parser(k, v)
 
     @abstractmethod
     def get_model_type(self):

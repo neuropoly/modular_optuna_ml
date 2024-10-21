@@ -1,9 +1,9 @@
 from optuna import Trial, Study
 from sklearn.linear_model import LogisticRegression
 
-from models.utils import OptunaModelManager
+from models.utils import OptunaModelFactory
 
-class LogisticRegressionManager(OptunaModelManager):
+class LogisticRegressionFactory(OptunaModelFactory):
     """
     Optuna model factory for the LogisticRegression class in SciKit-Learn
     """
@@ -20,11 +20,11 @@ class LogisticRegressionManager(OptunaModelManager):
         # If the penalty is l1 or l2, assign the C of the model to the respective value
         elif penalty is 'l1':
             l1_c = self.trial_closures['l1_c'](trial)
-            return LogisticRegressionManager(penalty=penalty, C=l1_c)
+            return LogisticRegressionFactory(penalty=penalty, C=l1_c)
         # If the penalty is l1, use the corresponding weight param
         elif penalty is 'l2':
             l2_c = self.trial_closures['l2_c'](trial)
-            return LogisticRegressionManager(penalty=penalty, C=l2_c)
+            return LogisticRegressionFactory(penalty=penalty, C=l2_c)
         # ElasticNet needs a bit more management to convert the pair of l1 and l2 C values
         elif penalty is 'elasticnet':
             # Get the respective C values
@@ -35,7 +35,7 @@ class LogisticRegressionManager(OptunaModelManager):
             # ... and use it to calculate the effective C value
             c = l1_c / l1_ratio
             # Return the resulting model
-            return LogisticRegressionManager(penalty=penalty, C=c, l1_ratio=l1_ratio)
+            return LogisticRegressionFactory(penalty=penalty, C=c, l1_ratio=l1_ratio)
 
         # If the above checks fail, raise an error
         raise ValueError("""

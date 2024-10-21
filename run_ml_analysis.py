@@ -12,8 +12,8 @@ from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from models import MANAGER_MAP
-from models.utils import OptunaModelManager
+from models import FACTORY_MAP
+from models.utils import OptunaModelFactory
 
 LOGGER = logging.getLogger(__name__)
 
@@ -163,12 +163,12 @@ def parse_model_config(config_path: Path) -> dict:
 
         # Terminate if any entry does not reference a valid model type
         manager_class = dict(entry).pop('model', None)
-        manager_class = MANAGER_MAP.get(manager_class, None)
+        manager_class = FACTORY_MAP.get(manager_class, None)
         if manager_class is None:
             raise ValueError(f"Entry '{label}' did not designate a valid model, terminating!")
 
         # Terminate if the manager class is not a subclass of OptunaModelManager
-        if not isclass(manager_class) or not issubclass(manager_class, OptunaModelManager):
+        if not isclass(manager_class) or not issubclass(manager_class, OptunaModelFactory):
             raise ValueError(
                 f"Manager class for model entry '{label}' is not a subclass of OptunaModelManager.")
 

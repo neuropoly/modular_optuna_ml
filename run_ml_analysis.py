@@ -7,8 +7,10 @@ from pathlib import Path
 from typing import List, Callable, Any, Dict
 
 import numpy as np
+import optuna
 import pandas as pd
 from sklearn.impute import SimpleImputer, KNNImputer
+from sklearn.metrics import log_loss
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
@@ -386,9 +388,15 @@ def main(in_path: Path, out_path: Path, data_config: Path, model_config: Path):
         # Do post-split processing
         train_x, test_x = process_df_post_split(train_x, test_x, data_config)
 
-        # Run an ML study using this data
-        for label, manager in model_config.items():
-            pass
+        for label, factory in model_config.items():
+            # TODO: Move this to a proper configurable manager
+            def opt_func(trial: optuna.Trial):
+                model = factory.build_model(trial)
+                model.fit(train_x, train_y)
+                prob_y = model.predict_proba(test_x)
+                return log_loss(test_y, prob_y)
+            study = optuna.create_study()
+            study.optimize(opt_func, n_trials=10)
 
 
 if __name__ == "__main__":

@@ -156,19 +156,19 @@ def parse_model_config(config_path: Path) -> dict:
         raise TypeError
 
     # Iterate through the list to parse the results
-    optuna_managers = {}
+    optuna_factories = {}
     for i, entry in enumerate(config_data):
         # Get the label, if one is given
         label = entry.pop('label', f"Unnamed [{i}]")
 
         # Terminate if any entry does not reference a valid model type
-        manager_class = dict(entry).pop('model', None)
-        manager_class = FACTORY_MAP.get(manager_class, None)
-        if manager_class is None:
+        factory_class = dict(entry).pop('model', None)
+        factory_class = FACTORY_MAP.get(factory_class, None)
+        if factory_class is None:
             raise ValueError(f"Entry '{label}' did not designate a valid model, terminating!")
 
         # Terminate if the manager class is not a subclass of OptunaModelManager
-        if not isclass(manager_class) or not issubclass(manager_class, OptunaModelFactory):
+        if not isclass(factory_class) or not issubclass(factory_class, OptunaModelFactory):
             raise ValueError(
                 f"Manager class for model entry '{label}' is not a subclass of OptunaModelManager.")
 
@@ -178,10 +178,10 @@ def parse_model_config(config_path: Path) -> dict:
             raise ValueError(f"Entry '{label}' did not specify parameters")
 
         # Save the results
-        optuna_managers[label] = manager_class(**params)
+        optuna_factories[label] = factory_class(**params)
 
     # Return the result
-    return optuna_managers
+    return optuna_factories
 
 
 def load_json_with_validation(json_path):

@@ -38,8 +38,8 @@ class LogisticRegressionFactory(OptunaModelFactory):
             return LogisticRegressionFactory(penalty=penalty, C=c, l1_ratio=l1_ratio)
 
         # If the above checks fail, raise an error
-        raise ValueError("""
-        Invalid penalty term used for LogisticRegression! 
-        Please make sure all values for the 'penalty' value in your ML config are one of the following:
-        ['l1', 'l2', 'elasticnet', null]
-        """)
+        raise ValueError(
+            "Invalid penalty term used for LogisticRegression!\n",
+            "Please make sure all values for the 'penalty' value in your ML config are one of the following:",
+            "['l1', 'l2', 'elasticnet', null]"
+        )

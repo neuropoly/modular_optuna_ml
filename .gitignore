@@ -2,5 +2,5 @@
 /test_data/manual_cleaning.ipynb
 /test_data/participants.tsv
 /presplit.tsv
-/debug/
+/debug/*
 /.idea/*

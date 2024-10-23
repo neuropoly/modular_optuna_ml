@@ -1,6 +1,4 @@
 {
-  "random_seed": 71544,
-  "no_replicates": 20,
   "foo": "bar",
   "drop_columns": [
     "Unnamed: 0"

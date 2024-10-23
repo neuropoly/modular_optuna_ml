@@ -12,12 +12,9 @@ class DataConfig(object):
         self.json_data = json_data
 
         # Parse the JSON data immediately, so we fail before running anything else
-        self.random_seed = self.parse_random_seed()
         self.drop_columns = self.parse_drop_columns()
         self.column_nullity = self.parse_column_nullity()
         self.row_nullity = self.parse_row_nullity()
-        self.no_replicates = self.parse_no_replicates()
-        self.no_crosses = self.parse_no_crosses()
         self.target_column = self.parse_target_column()
         self.categorical_cols = self.parse_categorical_cols()
         self.categorical_threshold = self.parse_categorical_threshold()
@@ -40,12 +37,6 @@ class DataConfig(object):
         return DataConfig(json_data, logger)
 
     """ Content parsers for elements in the configuration file """
-    def parse_random_seed(self):
-        default_seed = default_as(71554, self.logger)
-        return parse_data_config_entry(
-            "random_seed", self.json_data, default_seed, is_int(self.logger)
-        )
-
     def parse_drop_columns(self):
         default_empty = default_as([], self.logger)
         return parse_data_config_entry(
@@ -62,20 +53,6 @@ class DataConfig(object):
         default_nullity = default_as(0.75, self.logger)
         return parse_data_config_entry(
             "row_nullity", self.json_data, default_nullity, is_float(self.logger)
-        )
-
-    # TODO: Move into study config instead
-    def parse_no_replicates(self):
-        default_reps = default_as(10, self.logger)
-        return parse_data_config_entry(
-            "no_replicates", self.json_data, default_reps, is_int(self.logger)
-        )
-
-    # TODO: Move into study config instead
-    def parse_no_crosses(self):
-        default_crosses = default_as(10, self.logger)
-        return parse_data_config_entry(
-            "no_crosses", self.json_data, default_crosses, is_int(self.logger)
         )
 
     def parse_target_column(self):

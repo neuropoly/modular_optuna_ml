@@ -1,7 +1,6 @@
 import logging
 from argparse import ArgumentParser
 from doctest import debug
-from inspect import isclass
 from pathlib import Path
 
 import numpy as np
@@ -14,49 +13,9 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from config.data import DataConfig
 from config.model import ModelConfig
-from config.utils import load_json_with_validation, parse_data_config_entry
-from models import FACTORY_MAP
-from models.utils import OptunaModelFactory
+from config.study import StudyConfig
 
 LOGGER = logging.getLogger(__name__)
-
-
-def parse_model_config(config_path: Path) -> dict:
-    # Load the JSON with some validation
-    config_data = load_json_with_validation(config_path)
-
-    # If the JSON is not coded as a list, raise an error
-    if type(config_data) is not list:
-        LOGGER.error(f"JSON should be formatted as a list, was formatted as a {type(config_data)}; terminating")
-        raise TypeError
-
-    # Iterate through the list to parse the results
-    optuna_factories = {}
-    for i, entry in enumerate(config_data):
-        # Get the label, if one is given
-        label = entry.pop('label', f"Unnamed [{i}]")
-
-        # Terminate if any entry does not reference a valid model type
-        factory_class = dict(entry).pop('model', None)
-        factory_class = FACTORY_MAP.get(factory_class, None)
-        if factory_class is None:
-            raise ValueError(f"Entry '{label}' did not designate a valid model, terminating!")
-
-        # Terminate if the manager class is not a subclass of OptunaModelManager
-        if not isclass(factory_class) or not issubclass(factory_class, OptunaModelFactory):
-            raise ValueError(
-                f"Manager class for model entry '{label}' is not a subclass of OptunaModelManager.")
-
-        # Confirm the parameters exist
-        params = entry.pop('parameters', None)
-        if params is None:
-            raise ValueError(f"Entry '{label}' did not specify parameters")
-
-        # Save the results
-        optuna_factories[label] = factory_class(**params)
-
-    # Return the result
-    return optuna_factories
 
 
 def process_df_pre_analysis(df: pd.DataFrame, config: DataConfig) -> pd.DataFrame:
@@ -197,13 +156,14 @@ def process_continuous(test_df: pd.DataFrame, train_df: pd.DataFrame):
     return train_df, test_df
 
 
-def main(in_path: Path, out_path: Path, data_config: Path, model_config: Path):
+def main(in_path: Path, out_path: Path, data_config: Path, model_config: Path, study_config: Path):
     # Parse the configuration files
     data_config = DataConfig.from_json_file(data_config)
     model_config = ModelConfig.from_json_file(model_config)
+    study_config = StudyConfig.from_json_file(study_config)
 
     # Control for RNG before proceeding
-    init_seed = data_config.random_seed
+    init_seed = study_config.random_seed
     np.random.seed(init_seed)
 
     # Attempt to load the data from the input file
@@ -218,7 +178,7 @@ def main(in_path: Path, out_path: Path, data_config: Path, model_config: Path):
         df.to_csv(presplit_out, sep='\t')
 
     # Generate the requested number of different train-test split workspaces
-    no_replicates = data_config.no_replicates
+    no_replicates = study_config.no_replicates
     replicate_seeds = np.random.randint(0, np.iinfo(np.int32).max, size=no_replicates)
     skf_splitter = StratifiedKFold(n_splits=no_replicates, random_state=init_seed, shuffle=True)
 
@@ -270,11 +230,15 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '-d', '--data_config', default='data_config.json', type=Path,
-        help="Data processing configuration file in JSON format"
+        help="Data Processing configuration file in JSON format"
     )
     parser.add_argument(
         '-m', '--model_config', default='model_config.json', type=Path,
         help="Machine Learning Model configuration file in JSON format"
+    )
+    parser.add_argument(
+        '-s', '--study_config', default='study_config.json', type=Path,
+        help="Machine Learning Study configuration file in JSON format"
     )
     parser.add_argument(
         '--debug', action='store_true',

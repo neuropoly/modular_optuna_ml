@@ -1,7 +1,8 @@
-from optuna import Trial, Study
+from optuna import Trial
 from sklearn.linear_model import LogisticRegression
 
 from models.utils import OptunaModelFactory
+
 
 class LogisticRegressionFactory(OptunaModelFactory):
     """

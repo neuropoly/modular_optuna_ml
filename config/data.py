@@ -7,11 +7,11 @@ from config.utils import default_as, as_str, is_not_null, is_int, is_float, is_l
 
 class DataConfig(object):
     def __init__(self, json_data: dict, logger: Logger = Logger.root):
-        # Track the logger for use later
+        # Track the logger and data for use later
         self.logger = logger
         self.json_data = json_data
 
-        # Parse the JSON data into our model immediately, so we fail before running anything else
+        # Parse the JSON data immediately, so we fail before running anything else
         self.random_seed = self.parse_random_seed()
         self.drop_columns = self.parse_drop_columns()
         self.column_nullity = self.parse_column_nullity()

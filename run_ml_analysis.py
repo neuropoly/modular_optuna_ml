@@ -13,6 +13,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from config.data import DataConfig
+from config.model import ModelConfig
 from config.utils import load_json_with_validation, parse_data_config_entry
 from models import FACTORY_MAP
 from models.utils import OptunaModelFactory
@@ -197,11 +198,9 @@ def process_continuous(test_df: pd.DataFrame, train_df: pd.DataFrame):
 
 
 def main(in_path: Path, out_path: Path, data_config: Path, model_config: Path):
-    # Parse the data configuration file
+    # Parse the configuration files
     data_config = DataConfig.from_json_file(data_config)
-
-    # Load the model configuration file
-    model_config = parse_model_config(model_config)
+    model_config = ModelConfig.from_json_file(model_config)
 
     # Control for RNG before proceeding
     init_seed = data_config.random_seed
@@ -242,10 +241,11 @@ def main(in_path: Path, out_path: Path, data_config: Path, model_config: Path):
         # Do post-split processing
         train_x, test_x = process_df_post_split(train_x, test_x, data_config)
 
-        for label, factory in model_config.items():
+        for label, sub_config in model_config.sub_configs.items():
+            model_factory = sub_config.model_factory
             # TODO: Move this to a proper configurable manager
             def opt_func(trial: optuna.Trial):
-                model = factory.build_model(trial)
+                model = model_factory.build_model(trial)
                 model.fit(train_x, train_y)
                 prob_y = model.predict_proba(test_x)
                 return log_loss(test_y, prob_y)

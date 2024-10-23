@@ -104,3 +104,22 @@ def is_list(logger: Logger):
         return v
 
     return check
+
+def is_dict(logger: Logger):
+    """Confirms the value is a dictionary"""
+    def check(k: str, v):
+        if type(v) is not dict:
+            logger.error(f"'{k}' specified in the configuration file was not a dictionary; terminating")
+            raise TypeError
+        return v
+
+    return check
+
+def is_valid_option(check_set: set, logger: Logger):
+    """Confirms a value is on of a set of options"""
+    def check(k: str, v):
+        if v not in check_set:
+            logger.error(f"Value of '{k}' must be one of the following: {check_set}. Terminating")
+            raise TypeError
+        return v
+    return check

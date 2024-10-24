@@ -25,7 +25,7 @@ class DataConfig(object):
 
     @staticmethod
     def from_json_file(json_file: Path, logger: Logger = Logger.root):
-        """Creates a DataConfigManager using the contents of a JSON file"""
+        """Creates a DataConfig using the contents of a JSON file"""
         json_data = load_json_with_validation(json_file)
 
         if type(json_data) is not dict:

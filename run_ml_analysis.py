@@ -201,16 +201,16 @@ def main(in_path: Path, out_path: Path, data_config: Path, model_config: Path, s
         # Do post-split processing
         train_x, test_x = process_df_post_split(train_x, test_x, data_config)
 
-        for label, sub_config in model_config.sub_configs.items():
-            model_factory = sub_config.model_factory
-            # TODO: Move this to a proper configurable manager
-            def opt_func(trial: optuna.Trial):
-                model = model_factory.build_model(trial)
-                model.fit(train_x, train_y)
-                prob_y = model.predict_proba(test_x)
-                return log_loss(test_y, prob_y)
-            study = optuna.create_study()
-            study.optimize(opt_func, n_trials=10)
+        # Run the model specified by the model config on the data
+        model_factory = model_config.model_factory
+        # TODO: Move this to a proper configurable manager
+        def opt_func(trial: optuna.Trial):
+            model = model_factory.build_model(trial)
+            model.fit(train_x, train_y)
+            prob_y = model.predict_proba(test_x)
+            return log_loss(test_y, prob_y)
+        study = optuna.create_study()
+        study.optimize(opt_func, n_trials=1)
 
 
 if __name__ == "__main__":

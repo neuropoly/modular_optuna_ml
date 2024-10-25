@@ -115,6 +115,20 @@ def is_dict(logger: Logger):
 
     return check
 
+def is_file(logger: Logger):
+    """Confirms the value is a file which exists"""
+    def check(k: str, v):
+        file_path = Path(v)
+        if not file_path.exists():
+            logger.error(f"The path specified in '{k}' does not exist; terminating")
+            raise TypeError
+        elif not file_path.is_file():
+            logger.error(f"The path specified in '{k}' is not a file; terminating")
+            raise TypeError
+        return file_path
+
+    return check
+
 def is_valid_option(check_set: set, logger: Logger):
     """Confirms a value is on of a set of options"""
     def check(k: str, v):

@@ -2,7 +2,8 @@ from logging import Logger
 from pathlib import Path
 from sys import maxsize as int_maxsize
 
-from config.utils import default_as, as_str, is_not_null, is_int, is_float, is_list, parse_data_config_entry, load_json_with_validation
+from config.utils import default_as, as_str, is_not_null, is_int, is_float, is_list, parse_data_config_entry, \
+    load_json_with_validation, is_file
 
 
 class DataConfig(object):
@@ -12,6 +13,7 @@ class DataConfig(object):
         self.json_data = json_data
 
         # Parse the JSON data immediately, so we fail before running anything else
+        self.data_source = self.parse_data_source()
         self.drop_columns = self.parse_drop_columns()
         self.column_nullity = self.parse_column_nullity()
         self.row_nullity = self.parse_row_nullity()
@@ -37,6 +39,11 @@ class DataConfig(object):
         return DataConfig(json_data, logger)
 
     """ Content parsers for elements in the configuration file """
+    def parse_data_source(self):
+        return parse_data_config_entry(
+            "data_source", self.json_data, as_str(self.logger), is_file(self.logger)
+        )
+
     def parse_drop_columns(self):
         default_empty = default_as([], self.logger)
         return parse_data_config_entry(

@@ -1,4 +1,5 @@
 {
+  "data_source": "./test_data/iris_testing.tsv",
   "foo": "bar",
   "drop_columns": [
     "Unnamed: 0"

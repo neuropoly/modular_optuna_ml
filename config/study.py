@@ -1,7 +1,7 @@
 from logging import Logger
 from pathlib import Path
 
-from config.utils import default_as, parse_data_config_entry, is_int, load_json_with_validation
+from config.utils import default_as, parse_data_config_entry, is_int, load_json_with_validation, is_not_null, as_str
 
 
 class StudyConfig(object):
@@ -11,6 +11,7 @@ class StudyConfig(object):
         self.json_data = json_data
 
         # Parse the JSON data immediately, so we fail before running anything else
+        self.label = self.parse_label()
         self.random_seed = self.parse_random_seed()
         self.no_replicates = self.parse_no_replicates()
         self.no_crosses = self.parse_no_crosses()
@@ -30,6 +31,11 @@ class StudyConfig(object):
         return StudyConfig(json_data, logger)
 
     """ Content parsers for elements in the configuration file """
+    def parse_label(self):
+        return parse_data_config_entry(
+            "label", self.json_data, is_not_null(self.logger), as_str(self.logger)
+        )
+
     def parse_random_seed(self):
         default_seed = default_as(71554, self.logger)
         return parse_data_config_entry(

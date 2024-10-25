@@ -31,7 +31,7 @@ class StudyManager(object):
         # Define how messages for this logger are formatted
         msg_handler = logging.StreamHandler()
         msg_formatter = logging.Formatter(
-            fmt="{asctime} {levelname}:  \t{message}",
+            fmt=f"[{self.study_config.label}" + " {asctime} {levelname}] {message}",
             datefmt="%H:%M:%S",
             style='{'
         )

@@ -1,25 +1,14 @@
 import logging
 from argparse import ArgumentParser
-from doctest import debug
 from pathlib import Path
-
-import numpy as np
-import optuna
-import pandas as pd
-from sklearn.impute import SimpleImputer, KNNImputer
-from sklearn.metrics import log_loss
-from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from config.data import DataConfig
 from config.model import ModelConfig
 from config.study import StudyConfig
 from study.manager import StudyManager
 
-LOGGER = logging.getLogger(__name__)
 
-
-def main(data_config: Path, model_config: Path, study_config: Path):
+def main(data_config: Path, model_config: Path, study_config: Path, debug: bool):
     # Parse the configuration files
     data_config = DataConfig.from_json_file(data_config)
     model_config = ModelConfig.from_json_file(model_config)
@@ -62,18 +51,6 @@ if __name__ == "__main__":
     )
 
     argvs = parser.parse_args().__dict__
-
-    # Generate a logger for this program
-    logging.basicConfig(
-        format="{asctime} {levelname}:  \t{message}",
-        style='{',
-        datefmt="%H:%M:%S"
-    )
-    debug = argvs.pop('debug', False)
-    if debug:
-        LOGGER.setLevel(logging.DEBUG)
-    else:
-        LOGGER.setLevel(logging.INFO)
 
     # Run the analysis
     main(**argvs)

@@ -74,37 +74,39 @@ class TabularManager(FeatureSplittableManager):
     Abstract method overrides
     """
     def get_by_idx(self, idx):
-        # If the index is an integer, assume sample they want a single sample
+        # If the index is an integer or slice, assume they want a single sample
         if isinstance(idx, (int, np.integer)):
-            result = self.data.iloc[idx, :]
+            return self.data.iloc[idx, :]
+
         # If it's a string, assume they want a single feature
-        elif isinstance(idx, str):
-            result = self.data.loc[:, idx]
-        # If its another form of collection or array...
+        if isinstance(idx, str):
+            return self.data.loc[:, idx]
+
+        # All further options need some processing
+        # Slices should be passed to Panda's iloc indexer
+        if isinstance(idx, slice):
+            result = self.data.iloc[idx, :]
+
+        # For other collections, we need to sample
         elif isinstance(idx, (np.ndarray, Collection)):
             idx_sample = idx[0]
-            # ... of integers, assume they want samples
+            # If the sample is an integer, use iloc
             if isinstance(idx_sample, (int, np.integer)):
                 result = self.data.iloc[idx, :]
-            # ... otherwise delegate to Pandas
+            # Otherwise, use loc
             else:
-                result = self.data[idx]
-        # For everything else, delegate to Pandas
+                result = self.data.loc[idx, :]
+
+        # If everything else failed, pass to pandas and hope for the best
         else:
             result = self.data[idx]
 
         # If the result is a series, we need to convert it back to a DataFrame for consistency
         if isinstance(result, pd.Series):
-            # TODO: Flesh this out in full to account for more scenarios
-            if isinstance(idx, str):
-                result = result.to_frame()
+            result = result.to_frame()
 
-        # If it's a new dataframe, build a new TabularDataManager using it
-        if type(result) is pd.DataFrame:
-           return self._build_child_manager(result)
-
-        # Otherwise, simply return the result
-        return result
+        # Build a new TabularDataManager using the result, to ensure consistency in chained operations
+        return self._build_child_manager(result)
 
     def get_len(self):
         return self.data.shape[0]
@@ -171,7 +173,8 @@ class TabularManager(FeatureSplittableManager):
 
     def pop_features(self, features):
         # Grab only the features requested
-        new_manager = self[features]
+        new_df = self.data.loc[:, features].to_frame()
+        new_manager = self._build_child_manager(new_df)
 
         # Delete the same features from this dataset
         self.data = self.data.drop(columns=features)

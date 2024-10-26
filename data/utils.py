@@ -19,7 +19,7 @@ class DataManager(ABC):
     def get_by_idx(self, idx):
         """
         Get a value within the dataset managed by this class with [] query notation
-        :return: The value for the query, or (if it's a slice) a DataManager which manages that subset of entries
+        :return: The value for the query, or (if it's a slice) a DataManager which manages that subset of samples
         """
         pass
 

@@ -81,6 +81,8 @@ class StudyManager(object):
             train_x, test_x = x.train_test_split(train_idx, test_idx)
             train_y, test_y = y[train_idx], y[test_idx]
 
+            print(train_x[0:2])
+
             # Run a sub-study using this data
             self.run_supervised(study_name, train_x, train_y, test_x, test_y)
 

@@ -1,9 +1,10 @@
 {
+  "format": "tabular",
   "data_source": "./test_data/iris_testing.tsv",
+  "separator": "\t",
   "foo": "bar",
   "drop_columns": [
     "Unnamed: 0"
   ],
-  "target_column": "target",
   "categorical_threshold": 5
 }

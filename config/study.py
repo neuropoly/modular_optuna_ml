@@ -12,6 +12,7 @@ class StudyConfig(object):
 
         # Parse the JSON data immediately, so we fail before running anything else
         self.label = self.parse_label()
+        self.target = self.parse_target()
         self.random_seed = self.parse_random_seed()
         self.no_replicates = self.parse_no_replicates()
         self.no_crosses = self.parse_no_crosses()
@@ -34,6 +35,11 @@ class StudyConfig(object):
     def parse_label(self):
         return parse_data_config_entry(
             "label", self.json_data, is_not_null(self.logger), as_str(self.logger)
+        )
+
+    def parse_target(self):
+        return parse_data_config_entry(
+            "target", self.json_data, is_not_null(self.logger), as_str(self.logger)
         )
 
     def parse_random_seed(self):

@@ -1,5 +1,6 @@
 {
   "label": "TestStudy",
+  "target": "target",
   "random_seed": 71544,
   "no_replicates": 10
 }

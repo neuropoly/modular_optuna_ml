@@ -1,9 +1,10 @@
 from logging import Logger
 from pathlib import Path
-from sys import maxsize as int_maxsize
 
-from config.utils import default_as, as_str, is_not_null, is_int, is_float, is_list, parse_data_config_entry, \
-    load_json_with_validation, is_file
+from config.utils import as_str, is_not_null, parse_data_config_entry, \
+    load_json_with_validation
+from data import MANAGER_MAP
+from data.utils import DataManager
 
 
 class DataConfig(object):
@@ -12,18 +13,12 @@ class DataConfig(object):
         self.logger = logger
         self.json_data = json_data
 
-        # Parse the JSON data immediately, so we fail before running anything else
-        self.data_source = self.parse_data_source()
-        self.drop_columns = self.parse_drop_columns()
-        self.column_nullity = self.parse_column_nullity()
-        self.row_nullity = self.parse_row_nullity()
-        self.target_column = self.parse_target_column()
-        self.categorical_cols = self.parse_categorical_cols()
-        self.categorical_threshold = self.parse_categorical_threshold()
+        # Attempt to grab the type of data which should be managed
+        self.format = self.parse_format()
 
-        # Report any remaining values in the config file to the user
-        self.report_remaining_values()
-
+        # Parse the remaining config using the config manager associated with the format
+        self.manager_cls = MANAGER_MAP.get(self.format)
+        self.data_manager : DataManager = self.manager_cls.build_from_config_dict(self.json_data)
 
     @staticmethod
     def from_json_file(json_file: Path, logger: Logger = Logger.root):
@@ -39,44 +34,9 @@ class DataConfig(object):
         return DataConfig(json_data, logger)
 
     """ Content parsers for elements in the configuration file """
-    def parse_data_source(self):
+    def parse_format(self):
         return parse_data_config_entry(
-            "data_source", self.json_data, as_str(self.logger), is_file(self.logger)
-        )
-
-    def parse_drop_columns(self):
-        default_empty = default_as([], self.logger)
-        return parse_data_config_entry(
-            "drop_columns", self.json_data, default_empty, is_list(self.logger)
-        )
-
-    def parse_column_nullity(self):
-        default_nullity = default_as(0.75, self.logger)
-        return parse_data_config_entry(
-            "column_nullity", self.json_data, default_nullity, is_float(self.logger)
-        )
-
-    def parse_row_nullity(self):
-        default_nullity = default_as(0.75, self.logger)
-        return parse_data_config_entry(
-            "row_nullity", self.json_data, default_nullity, is_float(self.logger)
-        )
-
-    def parse_target_column(self):
-        return parse_data_config_entry(
-            "target_column", self.json_data, is_not_null(self.logger), as_str(self.logger)
-        )
-
-    def parse_categorical_cols(self):
-        default_empty = default_as([], self.logger)
-        return parse_data_config_entry(
-            "categorical_cols", self.json_data, default_empty, is_list(self.logger)
-        )
-
-    def parse_categorical_threshold(self):
-        default_max_int = default_as(int_maxsize)
-        return parse_data_config_entry(
-            "categorical_threshold", self.json_data, default_max_int, is_int(self.logger)
+            "format", self.json_data, is_not_null(self.logger), as_str(self.logger)
         )
 
     def report_remaining_values(self):

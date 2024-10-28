@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 import optuna
+from optuna.samplers import TPESampler
 from sklearn.metrics import log_loss
 from sklearn.model_selection import StratifiedKFold
 
@@ -84,9 +85,9 @@ class StudyManager(object):
             print(train_x[0:2])
 
             # Run a sub-study using this data
-            self.run_supervised(study_name, train_x, train_y, test_x, test_y)
+            self.run_supervised(study_name, train_x, train_y, test_x, test_y, s)
 
-    def run_supervised(self, study_name: str, train_x, train_y, test_x, test_y):
+    def run_supervised(self, study_name: str, train_x, train_y, test_x, test_y, seed: int):
         # Run the model specified by the model config on the data
         model_factory = self.model_config.model_factory
 
@@ -98,5 +99,6 @@ class StudyManager(object):
             return log_loss(test_y, prob_y)
 
         # Run the study with these parameters
-        study = optuna.create_study(study_name=study_name)
+        sampler = TPESampler(seed=seed)
+        study = optuna.create_study(study_name=study_name, sampler=sampler)
         study.optimize(opt_func, n_trials=1)

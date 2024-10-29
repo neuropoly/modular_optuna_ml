@@ -125,7 +125,7 @@ def prep_feature_data(df):
 
     # TODO Swap back to KNN with immediate (single) neighbor for categorical data
 
-    # Impute the categorical data with immediate neighbor imputation (KNN with 1 neighbor)
+    # Impute the categorical data with immediate neighbor imputation
     cat_imp = SimpleImputer(strategy='most_frequent', missing_values=pd.NA)
     cat_data = pd.DataFrame(cat_imp.fit_transform(df), index=df.index, columns=df.columns)
     cat_data = cat_data.loc[:, cat_cols]

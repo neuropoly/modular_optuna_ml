@@ -21,14 +21,18 @@ UNIVERSAL_DB_KEYS = [
 
 
 class StudyManager(object):
-    def __init__(self, data_config: DataConfig, model_config: ModelConfig, study_config: StudyConfig, debug: bool):
+    def __init__(self, data_config: DataConfig, model_config: ModelConfig, study_config: StudyConfig,
+                 overwrite: bool, debug: bool):
         # Track each of the configs for this analysis
         self.data_config = data_config
         self.model_config = model_config
         self.study_config = study_config
 
-        # Track whether to run the model in debug mode or not
+        # Track whether to run the model in overwrite and/or debug mode
+        self.overwrite = overwrite
         self.debug = debug
+
+        # Initiate the logger for this study
         self.logger = self.init_logger()
 
         # Generate a unique label for the combination of configs in this analysis
@@ -84,15 +88,31 @@ class StudyManager(object):
             # Generate a list of all the columns to place in the table
             col_vals = [*UNIVERSAL_DB_KEYS, *self.tracked_metrics.keys()]
 
-            # TODO: Allow for table resetting/overwriting via command line
+            # If we're enabling overwrites, delete any table with the same name before proceeding
+            if self.overwrite:
+                # Check if a table with the current study name exists
+                table_exists = cur.execute(
+                    f"SELECT name FROM sqlite_master WHERE type='table' AND name='{self.study_label}'"
+                ).arraysize > 0
+                # If it does, warn the user and reset it
+                if table_exists:
+                    self.logger.warning(f"DB table for '{self.study_label}' already existed and was overwritten")
+                    cur.execute(
+                        f"DROP TABLE {self.study_label};"
+                    )
 
             # Create the table for this study
-            cur.execute(
-                # Table should share its name with the study
-                f"CREATE TABLE {self.study_label} "
-                # Should contain all columns desired by the user
-                f"({', '.join(col_vals)})"
-            )
+            try:
+                cur.execute(
+                    # Table should share its name with the study
+                    f"CREATE TABLE {self.study_label} "
+                    # Should contain all columns desired by the user
+                    f"({', '.join(col_vals)})"
+                )
+            except sqlite3.OperationalError as err:
+                if "already exists" in err.args[0]:
+                    err.args = (f"The DB table for study '{self.study_label}' already exists; use the '--overwrite' flag if you want to overwrite it",)
+                raise err
 
             # Return the result
             return con, cur

@@ -1,4 +1,3 @@
-import logging
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -8,7 +7,7 @@ from config.study import StudyConfig
 from study.manager import StudyManager
 
 
-def main(data_config: Path, model_config: Path, study_config: Path, debug: bool):
+def main(data_config: Path, model_config: Path, study_config: Path, overwrite: bool, debug: bool):
     # Parse the configuration files
     data_config = DataConfig.from_json_file(data_config)
     model_config = ModelConfig.from_json_file(model_config)
@@ -19,6 +18,7 @@ def main(data_config: Path, model_config: Path, study_config: Path, debug: bool)
         data_config,
         model_config,
         study_config,
+        overwrite=overwrite,
         debug=debug
     )
 
@@ -44,6 +44,10 @@ if __name__ == "__main__":
     parser.add_argument(
         '-s', '--study_config', default='study_config.json', type=Path,
         help="Machine Learning Study configuration file in JSON format"
+    )
+    parser.add_argument(
+        '--overwrite', action='store_true',
+        help="Whether the program should be allowed to overwrite existing database tables to save its output"
     )
     parser.add_argument(
         '--debug', action='store_true',

@@ -13,15 +13,14 @@ from config.model import ModelConfig
 from config.study import StudyConfig
 from data.utils import FeatureSplittableManager
 
+UNIVERSAL_DB_KEYS = [
+    'replicate',
+    'trial',
+    'objective'
+]
+
 
 class StudyManager(object):
-    # TODO: Make this configurable by the user
-    DB_KEYS = [
-        'replicate',
-        'trial',
-        'objective'
-    ]
-
     def __init__(self, data_config: DataConfig, model_config: ModelConfig, study_config: StudyConfig, debug: bool):
         # Track each of the configs for this analysis
         self.data_config = data_config
@@ -83,12 +82,17 @@ class StudyManager(object):
             cur = con.cursor()
 
             # Generate a list of all the columns to place in the table
-            col_vals = [*StudyManager.DB_KEYS, *self.tracked_metrics.keys()]
+            col_vals = [*UNIVERSAL_DB_KEYS, *self.tracked_metrics.keys()]
 
             # TODO: Allow for table resetting/overwriting via command line
 
             # Create the table for this study
-            cur.execute(f"CREATE TABLE {self.study_label} ({', '.join(col_vals)})")
+            cur.execute(
+                # Table should share its name with the study
+                f"CREATE TABLE {self.study_label} "
+                # Should contain all columns desired by the user
+                f"({', '.join(col_vals)})"
+            )
 
             # Return the result
             return con, cur

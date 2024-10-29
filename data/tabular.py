@@ -1,7 +1,7 @@
-from logging import Logger
+from copy import deepcopy
 from logging import Logger
 from sys import maxsize as int_maxsize
-from typing import Optional, Collection, Iterable
+from typing import Optional, Collection
 
 import numpy as np
 import pandas as pd
@@ -106,7 +106,7 @@ class TabularManager(FeatureSplittableManager):
             result = result.to_frame()
 
         # Build a new TabularDataManager using the result, to ensure consistency in chained operations
-        return self._build_child_manager(result)
+        return self._build_child_manager(result, f"subset[{idx}]")
 
     def get_len(self):
         return self.data.shape[0]
@@ -139,7 +139,7 @@ class TabularManager(FeatureSplittableManager):
                 to_drop.append(r)
         new_df = new_df.drop(index=to_drop)
 
-        return self._build_child_manager(new_df)
+        return self._build_child_manager(new_df, "preprocessed")
 
     def train_test_split(self, train_idx, test_idx):
         # Split the data using the indices provided
@@ -165,8 +165,8 @@ class TabularManager(FeatureSplittableManager):
         train_df, test_df = self.process_continuous(train_df, test_df)
 
         # Build new DataManagers based on these subsets
-        train_data = self._build_child_manager(train_df)
-        test_data = self._build_child_manager(test_df)
+        train_data = self._build_child_manager(train_df, "train_split")
+        test_data = self._build_child_manager(test_df, "test_split")
 
         # Return the result
         return train_data, test_data
@@ -174,12 +174,13 @@ class TabularManager(FeatureSplittableManager):
     def pop_features(self, features):
         # Grab only the features requested
         new_df = self.data.loc[:, features].to_frame()
-        new_manager = self._build_child_manager(new_df)
+        new_manager = self._build_child_manager(new_df, "pop_result")
 
         # Delete the same features from this dataset
         self.data = self.data.drop(columns=features)
 
-        # TODO: Update config with this new information
+        # Update config label Data Source to denote it is modified version
+        self.config.data_source += "pop_remainder"
 
         # Return a DataManager with only the requested features in it
         return new_manager
@@ -252,7 +253,7 @@ class TabularManager(FeatureSplittableManager):
         # Output the resulting dataframes post-processing if debug is on
         return train_df, test_df
 
-    def _build_child_manager(self, sub_df: pd.DataFrame):
+    def _build_child_manager(self, sub_df: pd.DataFrame, label: str):
         """
         Builds a new DataManager using a DataFrame which is modified version of the one currently managed
         """
@@ -260,8 +261,10 @@ class TabularManager(FeatureSplittableManager):
         new_manager = TabularManager()
         new_manager.logger = self.logger
         new_manager.data = sub_df
-        new_manager.config = self.config
-        # TODO: Modify config with additional details?
+        new_manager.config = deepcopy(self.config)
+
+        # Update the config's source to denote it is a child
+        new_manager.config.data_source += ":" + label
 
         # Return the result
         return new_manager
@@ -290,7 +293,7 @@ class TabularManagerConfig(object):
     """ Content parsers for elements in the configuration file """
     def parse_data_source(self):
         return parse_data_config_entry(
-            "data_source", self.config_data, as_str(self.logger), is_file(self.logger)
+            "data_source", self.config_data, as_str(self.logger), is_file(self.logger), as_str(self.logger)
         )
 
     def parse_separator(self):

@@ -31,9 +31,9 @@ def load_json_with_validation(json_path: Path, logger: Logger = Logger.root) -> 
     return json_data
 
 T = TypeVar("T")
-CheckFunction = Callable[[str, T], T]
+Check = Callable[[str, T], T]
 
-def parse_data_config_entry(config_key: str, json_dict: dict, *checks: CheckFunction) -> Any:
+def parse_data_config_entry(config_key: str, json_dict: dict, *checks: Check) -> Any:
     """
     Automatically parses a key contained within the JSON file, running any checks requested by the user in the process
     :param config_key: The key to query for within the JSON file
@@ -49,9 +49,8 @@ def parse_data_config_entry(config_key: str, json_dict: dict, *checks: CheckFunc
     # Return the processed and check value if all checks passed
     return config_val
 
-
 """ Transforming functions """
-def default_as(default_val, logger: Logger = Logger.root):
+def default_as(default_val, logger: Logger = Logger.root) -> Check:
     """Returns a default value if a null value is observed"""
     def check(k: str, v):
         if v is None:
@@ -60,7 +59,7 @@ def default_as(default_val, logger: Logger = Logger.root):
         return v
     return check
 
-def as_str(logger: Logger = Logger.root):
+def as_str(logger: Logger) -> Check:
     def check(k, v):
         if not type(v) is str:
             logger.warning(f"Value for '{k}' was not a native string, and was converted automatically")
@@ -68,14 +67,14 @@ def as_str(logger: Logger = Logger.root):
         return v
     return check
 
-def as_path(_):
+def as_path() -> Check:
     def check(_, v):
         p = Path(v)
         return p
     return check
 
 """ Value-checking functions"""
-def is_not_null(logger: Logger = Logger.root):
+def is_not_null(logger: Logger) -> Check:
     def check(k: str, v):
         if v is None:
             logger.error(f"Config value '{k}' must be specified by the user. Terminating.")
@@ -83,7 +82,8 @@ def is_not_null(logger: Logger = Logger.root):
         return v
     return check
 
-def is_int(logger: Logger):
+# noinspection DuplicatedCode
+def is_int(logger: Logger) -> Check:
     """Confirms the value is an integer"""
     def check(k: str, v):
         if type(v) is not int:
@@ -92,7 +92,7 @@ def is_int(logger: Logger):
         return v
     return check
 
-def is_float(logger: Logger):
+def is_float(logger: Logger) -> Check:
     """Confirms the value is a float"""
     def check(k: str, v):
         if type(v) is not float:
@@ -101,7 +101,8 @@ def is_float(logger: Logger):
         return v
     return check
 
-def is_list(logger: Logger):
+# noinspection DuplicatedCode
+def is_list(logger: Logger) -> Check:
     """Confirms the value is a list"""
     def check(k: str, v):
         if type(v) is not list:
@@ -111,7 +112,7 @@ def is_list(logger: Logger):
 
     return check
 
-def is_dict(logger: Logger):
+def is_dict(logger: Logger) -> Check:
     """Confirms the value is a dictionary"""
     def check(k: str, v):
         if type(v) is not dict:
@@ -121,7 +122,7 @@ def is_dict(logger: Logger):
 
     return check
 
-def is_file(logger: Logger):
+def is_file(logger: Logger) -> Check:
     """Confirms the value is a file which exists"""
     def check(k: str, v):
         file_path = Path(v)
@@ -135,7 +136,7 @@ def is_file(logger: Logger):
 
     return check
 
-def is_valid_option(check_set: set, logger: Logger):
+def is_valid_option(check_set: set, logger: Logger) -> Check:
     """Confirms a value is on of a set of options"""
     def check(k: str, v):
         if v not in check_set:

@@ -72,5 +72,5 @@ class StudyConfig(object):
     def parse_output_path(self):
         # TODO: Allow for non-filepath based storage options
         return parse_data_config_entry(
-            "output_path", self.json_data, is_not_null(self.logger), as_path(self.logger)
+            "output_path", self.json_data, is_not_null(self.logger), as_path()
         )

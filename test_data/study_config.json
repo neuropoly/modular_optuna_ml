@@ -2,5 +2,8 @@
   "label": "TestStudy",
   "target": "target",
   "random_seed": 71544,
-  "no_replicates": 10
+  "no_replicates": 10,
+  "no_crosses": 10,
+  "no_trials": 10,
+  "output_path": "test_data/output.db"
 }

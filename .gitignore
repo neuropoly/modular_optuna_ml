@@ -4,3 +4,4 @@
 /presplit.tsv
 /debug/*
 /.idea/*
+/test_data/output.db

@@ -15,6 +15,7 @@ class DataConfig(object):
 
         # Attempt to grab the type of data which should be managed
         self.format = self.parse_format()
+        self.label = self.parse_label()
 
         # Parse the remaining config using the config manager associated with the format
         self.manager_cls = MANAGER_MAP.get(self.format)
@@ -37,6 +38,11 @@ class DataConfig(object):
     def parse_format(self):
         return parse_data_config_entry(
             "format", self.json_data, is_not_null(self.logger), as_str(self.logger)
+        )
+
+    def parse_label(self):
+        return parse_data_config_entry(
+            "label", self.json_data, is_not_null(self.logger), as_str(self.logger)
         )
 
     def report_remaining_values(self):

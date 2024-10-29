@@ -1,7 +1,8 @@
 from logging import Logger
 from pathlib import Path
 
-from config.utils import default_as, parse_data_config_entry, is_int, load_json_with_validation, is_not_null, as_str
+from config.utils import default_as, parse_data_config_entry, is_int, load_json_with_validation, is_not_null, as_str, \
+    as_path
 
 
 class StudyConfig(object):
@@ -16,6 +17,8 @@ class StudyConfig(object):
         self.random_seed = self.parse_random_seed()
         self.no_replicates = self.parse_no_replicates()
         self.no_crosses = self.parse_no_crosses()
+        self.no_trials = self.parse_no_trials()
+        self.output_path = self.parse_output_path()
 
 
     @staticmethod
@@ -58,4 +61,16 @@ class StudyConfig(object):
         default_crosses = default_as(10, self.logger)
         return parse_data_config_entry(
             "no_crosses", self.json_data, default_crosses, is_int(self.logger)
+        )
+
+    def parse_no_trials(self):
+        default_trials = default_as(100, self.logger)
+        return parse_data_config_entry(
+            "no_trials", self.json_data, default_trials, is_int(self.logger)
+        )
+
+    def parse_output_path(self):
+        # TODO: Allow for non-filepath based storage options
+        return parse_data_config_entry(
+            "output_path", self.json_data, is_not_null(self.logger), as_path(self.logger)
         )

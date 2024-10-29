@@ -1,4 +1,5 @@
 {
+  "label": "IrisTesting",
   "format": "tabular",
   "data_source": "./test_data/iris_testing.tsv",
   "separator": "\t",

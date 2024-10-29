@@ -1,5 +1,5 @@
 {
-  "label": "logistic_regression",
+  "label": "LogisticRegression",
   "model": "LogisticRegression",
   "parameters": {
     "penalty": ["l1", "l2", "elasticnet", null],

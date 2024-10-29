@@ -68,6 +68,12 @@ def as_str(logger: Logger = Logger.root):
         return v
     return check
 
+def as_path(_):
+    def check(_, v):
+        p = Path(v)
+        return p
+    return check
+
 """ Value-checking functions"""
 def is_not_null(logger: Logger = Logger.root):
     def check(k: str, v):

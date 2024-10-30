@@ -4,13 +4,10 @@ from sklearn.linear_model import LogisticRegression
 from models.utils import OptunaModelManager
 
 
-class LogisticRegressionManager(OptunaModelManager):
+class LogisticRegressionManager(OptunaModelManager[LogisticRegression]):
     """
     Optuna model manager for the LogisticRegression class in SciKit-Learn
     """
-    def get_model_type(self):
-        return LogisticRegression
-
     def build_model(self, trial: Trial):
         # Get the solver to use for this model
         solver = self.trial_closures['solver'](trial)

@@ -1,10 +1,12 @@
+import typing
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Generic
 
 from optuna import Trial
 
+T = TypeVar('T')
 
-class OptunaModelManager(ABC):
+class OptunaModelManager(Generic[T], ABC):
     """
     A manager for producing and evaluating Optuna-tunable models
     """
@@ -56,20 +58,24 @@ class OptunaModelManager(ABC):
         print(f"WARNING: parameter '{key}' within the ML configuration was an invalid type!")
         return None
 
+    _type_T: type[T]
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # Check if this is a properly instantiated class w/ a declared generic type
+        if orig_bases := cls.__dict__.get('__orig_bases__', None) is not None:
+            # If it is, and there is a type declared, track it
+            if len(orig_bases) > 0:
+                cls._type_T = orig_bases[0]
+
     def __init__(self, **kwargs):
         # By default, just parse all key-word arguments into a 'trial_closures' parameter to manage later
         self.trial_closures = {}
         for k, v in kwargs.items():
             self.trial_closures[k] = OptunaModelManager.optuna_trial_param_parser(k, v)
 
-    ModelType = TypeVar('ModelType')
-
-    @abstractmethod
-    def get_model_type(self) -> type[ModelType]:
-        """
-        Return the model type associate with this class, for validation’s sake
-        """
-        return None
+    def get_type(self):
+        return self._type_T
 
     @abstractmethod
     def build_model(self, trial: Trial):
@@ -81,7 +87,7 @@ class OptunaModelManager(ABC):
         return None
 
     @abstractmethod
-    def predict(self, model: ModelType, x):
+    def predict(self, model: T, x):
         """
         Generate the predictions from a model of the type managed by this class
         :param model: The model to generate predictions from
@@ -90,7 +96,7 @@ class OptunaModelManager(ABC):
         """
         return None
 
-    def predict_proba(self, model: ModelType, x):
+    def predict_proba(self, model: T, x):
         """
         Predict the (pseudo-) probability of each class the model has been tasked with. Optional implementation, as
         not all OptunaModelManagers manage categorical models
@@ -99,4 +105,3 @@ class OptunaModelManager(ABC):
         :return: The generated probability estimates
         """
         raise NotImplementedError(f"'{type(self)}' has not implemented the 'predict_proba' function")
-

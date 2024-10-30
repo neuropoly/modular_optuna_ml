@@ -1,6 +1,6 @@
-from models.linear import LogisticRegressionFactory
+from models.linear import LogisticRegressionManager
 
 # A map containing all Optuna Managers within this module, for easy reference
-FACTORY_MAP = {
-    'LogisticRegression': LogisticRegressionFactory
+MANAGER_MAP = {
+    'LogisticRegression': LogisticRegressionManager
 }

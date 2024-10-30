@@ -39,7 +39,7 @@ class StudyManager(object):
         self.study_label = f"{self.study_config.label}__{self.model_config.label}__{self.data_config.label}"
 
         # Pull the objective function for this study -- TODO: Make this configurable
-        self.objective = lambda m, x, y: log_loss(y, m.predict_proba(x))
+        self.objective = lambda m, x, y: log_loss(y, self.model_config.model_manager.predict_proba(m, x))
 
         # Track the list of other metrics to measure and track -- TODO: make this configurable
         self.tracked_metrics = {
@@ -186,7 +186,7 @@ class StudyManager(object):
         study_name = f"{self.study_label} [{rep}]"
 
         # Run the model specified by the model config on the data
-        model_factory = self.model_config.model_factory
+        model_manager = self.model_config.model_manager
 
         # Define the function which will utilize a trial's parameters to generate models to-be-tested
         def opt_func(trial: optuna.Trial):
@@ -199,15 +199,15 @@ class StudyManager(object):
                 ty, vy = train_y[ti], train_y[vi]
 
                 # Generate and fit a new instance of the model to the training subset
-                model = model_factory.build_model(trial)
+                model = model_manager.build_model(trial)
                 model.fit(tx, np.ravel(ty))  # 'ravel' saves us a warning log
 
                 # Calculate the objective metric for this function and store it
                 objective_cross_values[i] = self.objective(model, vx, vy)
 
             # Generate and fit the model to the full training set
-            model = model_factory.build_model(trial)
-            model.fit(train_x, train_y)
+            model = model_manager.build_model(trial)
+            model.fit(train_x, np.ravel(train_y))  # Ravel prevents a warning log
 
             # Calculate the objective function's value on the test set as well
             objective_value = np.mean(objective_cross_values)

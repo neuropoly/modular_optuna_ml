@@ -4,8 +4,8 @@ from pathlib import Path
 
 from config.utils import parse_data_config_entry, is_not_null, as_str, is_valid_option, default_as, is_dict, \
     load_json_with_validation
-from models import FACTORY_MAP
-from models.utils import OptunaModelFactory
+from models import MANAGER_MAP
+from models.utils import OptunaModelManager
 
 
 class ModelConfig(object):
@@ -19,8 +19,8 @@ class ModelConfig(object):
         self.model_name = self.parse_model()
         self.parameters = self.parse_parameters()
 
-        # Pre-build the model factory using the values prior
-        self.model_factory = self.generate_model_factory()
+        # Pre-build the model manager using the values prior
+        self.model_manager = self.generate_model_manager()
 
     @staticmethod
     def from_json_file(json_file: Path, logger: Logger = Logger.root):
@@ -44,7 +44,7 @@ class ModelConfig(object):
 
     def parse_model(self):
         # Pull the model name from the config
-        valid_model_choice = is_valid_option(FACTORY_MAP.keys(), self.logger)
+        valid_model_choice = is_valid_option(MANAGER_MAP.keys(), self.logger)
         return parse_data_config_entry(
             "model", self.json_data,
             is_not_null(self.logger), as_str(self.logger), valid_model_choice
@@ -64,13 +64,13 @@ class ModelConfig(object):
             )
 
     """ Miscellaneous """
-    def generate_model_factory(self):
+    def generate_model_manager(self):
         # Confirm that it is a valid model type, in case any invalid post-hoc modification occurred
-        factory_class = FACTORY_MAP.get(self.model_name)
-        if not isclass(factory_class) or not issubclass(factory_class, OptunaModelFactory):
+        manager_class = MANAGER_MAP.get(self.model_name)
+        if not isclass(manager_class) or not issubclass(manager_class, OptunaModelManager):
             raise ValueError(
                 f"Manager class for model entry '{self.label}' is not a subclass of OptunaModelManager; terminating.")
-        # Generate the model factory using the parameters specified by the user
-        model_factory = factory_class(**self.parameters)
+        # Generate the model manager using the parameters specified by the user
+        model_manager = manager_class(**self.parameters)
 
-        return model_factory
+        return model_manager

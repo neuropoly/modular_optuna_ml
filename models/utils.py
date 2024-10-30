@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, TypeVar
 
-from optuna import Trial, Study
+from optuna import Trial
 
 
-class OptunaModelFactory(ABC):
+class OptunaModelManager(ABC):
     """
-    A factory for producing Optuna-tunable models
+    A manager for producing and evaluating Optuna-tunable models
     """
     @staticmethod
     def optuna_trial_param_parser(key: str, params: Any):
@@ -60,10 +60,12 @@ class OptunaModelFactory(ABC):
         # By default, just parse all key-word arguments into a 'trial_closures' parameter to manage later
         self.trial_closures = {}
         for k, v in kwargs.items():
-            self.trial_closures[k] = OptunaModelFactory.optuna_trial_param_parser(k, v)
+            self.trial_closures[k] = OptunaModelManager.optuna_trial_param_parser(k, v)
+
+    ModelType = TypeVar('ModelType')
 
     @abstractmethod
-    def get_model_type(self):
+    def get_model_type(self) -> type[ModelType]:
         """
         Return the model type associate with this class, for validation’s sake
         """
@@ -77,3 +79,24 @@ class OptunaModelFactory(ABC):
         :return: A model generated using the trial
         """
         return None
+
+    @abstractmethod
+    def predict(self, model: ModelType, x):
+        """
+        Generate the predictions from a model of the type managed by this class
+        :param model: The model to generate predictions from
+        :param x: The data for said model to use to generate the predictions
+        :return: The generated predictions
+        """
+        return None
+
+    def predict_proba(self, model: ModelType, x):
+        """
+        Predict the (pseudo-) probability of each class the model has been tasked with. Optional implementation, as
+        not all OptunaModelManagers manage categorical models
+        :param model: The model to use to generate the probability estimates
+        :param x: The features the model should use to calculate said probabilities.
+        :return: The generated probability estimates
+        """
+        raise NotImplementedError(f"'{type(self)}' has not implemented the 'predict_proba' function")
+

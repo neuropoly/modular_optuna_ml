@@ -1,12 +1,12 @@
 from optuna import Trial
 from sklearn.linear_model import LogisticRegression
 
-from models.utils import OptunaModelFactory
+from models.utils import OptunaModelManager
 
 
-class LogisticRegressionFactory(OptunaModelFactory):
+class LogisticRegressionManager(OptunaModelManager):
     """
-    Optuna model factory for the LogisticRegression class in SciKit-Learn
+    Optuna model manager for the LogisticRegression class in SciKit-Learn
     """
     def get_model_type(self):
         return LogisticRegression
@@ -47,3 +47,9 @@ class LogisticRegressionFactory(OptunaModelFactory):
             "Please make sure all values for the 'penalty' value in your ML config are one of the following:",
             "['l1', 'l2', 'elasticnet', null]"
         )
+
+    def predict(self, model: LogisticRegression, x):
+        return model.predict(x)
+
+    def predict_proba(self, model: LogisticRegression, x):
+        return model.predict_proba(x)

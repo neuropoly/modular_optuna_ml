@@ -63,8 +63,8 @@ class OptunaModelManager(Generic[T], ABC):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         # Check if this is a properly instantiated class w/ a declared generic type
-        if orig_bases := cls.__dict__.get('__orig_bases__', None) is not None:
-            # If it is, and there is a type declared, track it
+        if orig_bases := cls.__dict__.get('__orig_bases__', False):
+            # If it is, and there is a type declared, track it; ignore the warnings, PyCharm is just being stupid here
             if len(orig_bases) > 0:
                 cls._type_T = orig_bases[0]
 

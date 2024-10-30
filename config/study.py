@@ -2,7 +2,8 @@ from logging import Logger
 from pathlib import Path
 
 from config.utils import default_as, parse_data_config_entry, is_int, load_json_with_validation, is_not_null, as_str, \
-    as_path
+    as_path, is_valid_option, all_valid_options, is_list
+from study import METRIC_FUNCTIONS
 
 
 class StudyConfig(object):
@@ -18,6 +19,8 @@ class StudyConfig(object):
         self.no_replicates = self.parse_no_replicates()
         self.no_crosses = self.parse_no_crosses()
         self.no_trials = self.parse_no_trials()
+        self.objective = self.parse_objective()
+        self.metrics = self.parse_metrics()
         self.output_path = self.parse_output_path()
 
 
@@ -67,6 +70,22 @@ class StudyConfig(object):
         default_trials = default_as(100, self.logger)
         return parse_data_config_entry(
             "no_trials", self.json_data, default_trials, is_int(self.logger)
+        )
+
+    def parse_objective(self):
+        # Pull the model name from the config
+        valid_objective_choice = is_valid_option(set(METRIC_FUNCTIONS.keys()), self.logger)
+        return parse_data_config_entry(
+            "objective", self.json_data,
+            is_not_null(self.logger), as_str(self.logger), valid_objective_choice
+        )
+
+    def parse_metrics(self):
+        # Pull the model name from the config
+        valid_metric_choice = all_valid_options(set(METRIC_FUNCTIONS.keys()), self.logger)
+        return parse_data_config_entry(
+            "metrics", self.json_data,
+            is_not_null(self.logger), is_list(self.logger), valid_metric_choice
         )
 
     def parse_output_path(self):

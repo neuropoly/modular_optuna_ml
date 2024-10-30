@@ -144,3 +144,16 @@ def is_valid_option(check_set: set, logger: Logger) -> Check:
             raise TypeError
         return v
     return check
+
+def all_valid_options(check_set: set, logger: Logger) -> Check:
+    """Confirms all values within a list are a valid choice"""
+    def check(k: str, v):
+        v = list(v)
+        invalid_choices = [x for x in v if x not in check_set]
+        if len(invalid_choices) > 0:
+            logger.error(f"All values contained in '{k}' must be one of the following: {check_set}. "
+                         f"Invalid values were {invalid_choices}. Terminating")
+            raise ValueError
+        return v
+
+    return check

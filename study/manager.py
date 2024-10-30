@@ -1,6 +1,6 @@
 import logging
 import sqlite3
-from typing import Optional
+from typing import Optional, TypeVar
 
 import numpy as np
 import optuna
@@ -12,6 +12,8 @@ from config.data import DataConfig
 from config.model import ModelConfig
 from config.study import StudyConfig
 from data.utils import FeatureSplittableManager
+from models.utils import OptunaModelManager
+from study import METRIC_FUNCTIONS, MetricUpdater
 
 UNIVERSAL_DB_KEYS = [
     'replicate',
@@ -38,13 +40,11 @@ class StudyManager(object):
         # Generate a unique label for the combination of configs in this analysis
         self.study_label = f"{self.study_config.label}__{self.model_config.label}__{self.data_config.label}"
 
-        # Pull the objective function for this study -- TODO: Make this configurable
-        self.objective = lambda m, x, y: log_loss(y, self.model_config.model_manager.predict_proba(m, x))
+        # Pull the objective function for this study
+        self.objective_func = METRIC_FUNCTIONS.get(self.study_config.objective)
 
         # Track the list of other metrics to measure and track -- TODO: make this configurable
-        self.tracked_metrics = {
-            "bacc": lambda m, x, y: balanced_accuracy_score(y, m.predict(x))
-        }
+        self.metric_funcs: dict[str, MetricUpdater] = {k: METRIC_FUNCTIONS[k] for k in self.study_config.metrics}
 
         # Generate some null attributes to be filled later
         self.db_connection : Optional[sqlite3.Connection] = None
@@ -86,7 +86,7 @@ class StudyManager(object):
             cur = con.cursor()
 
             # Generate a list of all the columns to place in the table
-            col_vals = [*UNIVERSAL_DB_KEYS, *self.tracked_metrics.keys()]
+            col_vals = [*UNIVERSAL_DB_KEYS, *self.metric_funcs.keys()]
 
             # If we're enabling overwrites, delete any table with the same name before proceeding
             if self.overwrite:
@@ -127,15 +127,16 @@ class StudyManager(object):
         self.db_connection.commit()
 
     """ ML Management """
-    def calculate_metrics(self, model, test_x, test_y):
+    T = TypeVar('T')
+    def calculate_metrics(self, manager: OptunaModelManager[T], model: T, context: dict):
         # Instantiate the set of values to be saved to the DB, starting with the metrics which are always saved
         metric_dict = {
             "objective": None  # TODO: avoid this 'Magic' entry, enforce order elsewhere
         }
 
         # Calculate the rest
-        for k, metric_func in self.tracked_metrics.items():
-            metric_dict[k] = metric_func(model, test_x, test_y)
+        for k, metric_func in self.metric_funcs.items():
+            metric_dict[k] = metric_func(manager, model, context)
 
         # Return the objective function's value for re-use
         return metric_dict
@@ -203,7 +204,13 @@ class StudyManager(object):
                 model.fit(tx, np.ravel(ty))  # 'ravel' saves us a warning log
 
                 # Calculate the objective metric for this function and store it
-                objective_cross_values[i] = self.objective(model, vx, vy)
+                context = {
+                    "train_x": tx,
+                    "train_y": ty,
+                    "test_x": vx,
+                    "test_y": vy
+                }
+                objective_cross_values[i] = self.objective_func(model_manager, model, context)
 
             # Generate and fit the model to the full training set
             model = model_manager.build_model(trial)
@@ -213,7 +220,13 @@ class StudyManager(object):
             objective_value = np.mean(objective_cross_values)
 
             # Calculate any metrics requested by the user, including the objective function
-            metric_vals = self.calculate_metrics(model=model, test_x=test_x, test_y=test_y)
+            context = {
+                "train_x": train_x,
+                "train_y": train_y,
+                "test_x": test_x,
+                "test_y": test_y
+            }
+            metric_vals = self.calculate_metrics(model_manager, model, context)
             # noinspection PyTypeChecker
             metric_vals['objective'] = objective_value
 

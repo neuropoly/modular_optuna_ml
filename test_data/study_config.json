@@ -5,5 +5,10 @@
   "no_replicates": 10,
   "no_crosses": 10,
   "no_trials": 10,
+  "objective": "training_log_loss",
+  "metrics": [
+    "testing_log_loss",
+    "testing_bacc"
+  ],
   "output_path": "test_data/output.db"
 }

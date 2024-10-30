@@ -128,12 +128,9 @@ class StudyManager(object):
 
     """ ML Management """
     def calculate_metrics(self, model, test_x, test_y):
-        # Calculate the objective function's value
-        obj_val = self.objective(model, test_x, test_y)
-
         # Instantiate the set of values to be saved to the DB, starting with the metrics which are always saved
         metric_dict = {
-            'objective': obj_val
+            "objective": None  # TODO: avoid this 'Magic' entry, enforce order elsewhere
         }
 
         # Calculate the rest
@@ -141,7 +138,7 @@ class StudyManager(object):
             metric_dict[k] = metric_func(model, test_x, test_y)
 
         # Return the objective function's value for re-use
-        return obj_val, metric_dict
+        return metric_dict
 
     def run(self):
         # Control for RNG before proceeding
@@ -193,18 +190,38 @@ class StudyManager(object):
 
         # Define the function which will utilize a trial's parameters to generate models to-be-tested
         def opt_func(trial: optuna.Trial):
-            # Generate and fit the model
+            # Run a subset analysis on the training data, split once for each cross requested
+            cross_splitter = StratifiedKFold(n_splits=self.study_config.no_crosses, random_state=seed, shuffle=True)
+            objective_cross_values = np.zeros(self.study_config.no_crosses)
+            for i, (ti, vi) in enumerate(cross_splitter.split(train_x.array(), train_y.array())):
+                # Split the components along the desired axes
+                tx, vx = train_x[ti], train_x[vi]
+                ty, vy = train_y[ti], train_y[vi]
+
+                # Generate and fit a new instance of the model to the training subset
+                model = model_factory.build_model(trial)
+                model.fit(tx, np.ravel(ty))  # 'ravel' saves us a warning log
+
+                # Calculate the objective metric for this function and store it
+                objective_cross_values[i] = self.objective(model, vx, vy)
+
+            # Generate and fit the model to the full training set
             model = model_factory.build_model(trial)
             model.fit(train_x, train_y)
 
+            # Calculate the objective function's value on the test set as well
+            objective_value = np.mean(objective_cross_values)
+
             # Calculate any metrics requested by the user, including the objective function
-            obj_val, metric_vals = self.calculate_metrics(model=model, test_x=test_x, test_y=test_y)
+            metric_vals = self.calculate_metrics(model=model, test_x=test_x, test_y=test_y)
+            # noinspection PyTypeChecker
+            metric_vals['objective'] = objective_value
 
             # Save the metric values to the DB
             self.save_results(rep, trial.number, metric_vals)
 
             # Return the objective function so Optuna can run optimization based on it
-            return obj_val
+            return objective_value
 
         # Run the study with these parameters
         sampler = TPESampler(seed=seed)

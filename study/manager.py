@@ -5,7 +5,7 @@ from typing import Optional, TypeVar
 import numpy as np
 import optuna
 from optuna.samplers import TPESampler
-from sklearn.metrics import balanced_accuracy_score, log_loss
+from scipy.constants import metric_ton
 from sklearn.model_selection import StratifiedKFold
 
 from config.data import DataConfig
@@ -43,7 +43,7 @@ class StudyManager(object):
         # Pull the objective function for this study
         self.objective_func = METRIC_FUNCTIONS.get(self.study_config.objective)
 
-        # Track the list of other metrics to measure and track -- TODO: make this configurable
+        # Track the list of other metrics to measure and track
         self.metric_funcs: dict[str, MetricUpdater] = {k: METRIC_FUNCTIONS[k] for k in self.study_config.metrics}
 
         # Generate some null attributes to be filled later
@@ -117,22 +117,28 @@ class StudyManager(object):
             # Return the result
             return con, cur
 
-    def save_results(self, replicate_n, trial_n, metrics):
+    def save_results(self, replicate_n, trial_n, objective_val, metrics):
         # Generate the list of values to be saved to the DB
-        new_vals = [replicate_n, trial_n, *metrics.values()]
-        new_val_strs = [str(v) for v in new_vals]
+        new_entry_components = metrics.copy()
+        new_entry_components.update({
+            "replicate": replicate_n,
+            "trial": trial_n,
+            "objective": objective_val
+        })
+
+        # Format them into clean strings so they play nice with the DB query formatting
+        new_entry_components = [f"'{k}'={v}" for k, v in new_entry_components.items()]
+        new_entry = ", ".join(new_entry_components)
 
         # Push the results to the db
-        self.db_cursor.execute(f"INSERT INTO {self.study_label} VALUES ({', '.join(new_val_strs)})")
+        self.db_cursor.execute(f"INSERT INTO {self.study_label} VALUES ({new_entry})")
         self.db_connection.commit()
 
     """ ML Management """
     T = TypeVar('T')
     def calculate_metrics(self, manager: OptunaModelManager[T], model: T, context: dict):
-        # Instantiate the set of values to be saved to the DB, starting with the metrics which are always saved
-        metric_dict = {
-            "objective": None  # TODO: avoid this 'Magic' entry, enforce order elsewhere
-        }
+        # Instantiate the set of values to be saved to the DB
+        metric_dict = {}
 
         # Calculate the rest
         for k, metric_func in self.metric_funcs.items():
@@ -231,7 +237,7 @@ class StudyManager(object):
             metric_vals['objective'] = objective_value
 
             # Save the metric values to the DB
-            self.save_results(rep, trial.number, metric_vals)
+            self.save_results(rep, trial.number, objective_value, metric_vals)
 
             # Return the objective function so Optuna can run optimization based on it
             return objective_value

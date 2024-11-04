@@ -103,14 +103,15 @@ class StudyManager(object):
             # If we're enabling overwrites, delete any table with the same name before proceeding
             if self.overwrite:
                 # Check if a table with the current study name exists
-                table_exists = cur.execute(
+                current_tables = cur.execute(
                     f"SELECT name FROM sqlite_master WHERE type='table' AND name='{self.study_label}'"
-                ).arraysize > 0
+                ).fetchall()
+                table_exists = len(current_tables) > 0
                 # If it does, warn the user and reset it
                 if table_exists:
                     self.logger.warning(f"DB table for '{self.study_label}' already existed and was overwritten")
                     cur.execute(
-                        f"DROP TABLE {self.study_label};"
+                        f"DROP TABLE IF EXISTS {self.study_label};"
                     )
 
             # Generate a list of all the columns to place in the table

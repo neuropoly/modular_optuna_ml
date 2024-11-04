@@ -1,0 +1,13 @@
+{
+  "label": "RandomForestClassifier",
+  "model": "RFC",
+  "parameters": {
+    "criterion": ["gini", "entropy", "log_loss"],
+    "min_samples_split": {
+      "type": "int",
+      "low": 2,
+      "high": 12
+    },
+    "max_features": [10, "sqrt", "log2"]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "label": "KNNC",
+  "model": "KNNC",
+  "parameters": {
+    "weights": ["uniform", "distance"],
+    "p": {
+      "type": "float",
+      "low": 1,
+      "high": 2
+    },
+    "n_neighbors": {
+      "type": "int",
+      "low": 3,
+      "high": 16
+    }
+  }
+}

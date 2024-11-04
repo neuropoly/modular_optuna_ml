@@ -1,10 +1,10 @@
 from optuna import Trial
 from sklearn.svm import SVC
 
-from models.utils import OptunaModelManager
+from models.sklearn.base import SciKitLearnModelManager
 
 
-class SVCManager(OptunaModelManager[SVC]):
+class SVCManager(SciKitLearnModelManager[SVC]):
     """
     Optuna model manager for the SVC class in SciKit-Learn
     """
@@ -20,8 +20,12 @@ class SVCManager(OptunaModelManager[SVC]):
 
         # TODO: Extend this with more parameters
 
-    def predict(self, model: SVC, x):
-        return model.predict(x)
-
     def predict_proba(self, model: SVC, x):
-        return model.predict_proba(x)
+        if model.probability:
+            return model.predict_proba(x)
+        else:
+            # Local import to avoid a global one potentially polluting the namespace during "healthy" runs
+            from sklearn.exceptions import NotFittedError
+            raise NotFittedError(
+                "predict_proba is not available when fitted with probability=False"
+            )

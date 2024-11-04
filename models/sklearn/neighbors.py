@@ -1,10 +1,10 @@
 from optuna import Trial
 from sklearn.neighbors import KNeighborsClassifier
 
-from models.utils import OptunaModelManager
+from models.sklearn.base import SciKitLearnModelManager
 
 
-class KNeighborsClassifierManager(OptunaModelManager[KNeighborsClassifier]):
+class KNeighborsClassifierManager(SciKitLearnModelManager[KNeighborsClassifier]):
     """
     Optuna model manager for the KNeighborsClassifier class in SciKit-Learn
     """
@@ -20,9 +20,3 @@ class KNeighborsClassifierManager(OptunaModelManager[KNeighborsClassifier]):
 
         # Return the resulting model
         return KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, p=p)
-
-    def predict(self, model: KNeighborsClassifier, x):
-        return model.predict(x)
-
-    def predict_proba(self, model: KNeighborsClassifier, x):
-        return model.predict_proba(x)

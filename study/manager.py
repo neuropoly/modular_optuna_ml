@@ -45,6 +45,7 @@ class StudyManager(object):
 
         # Track the list of other metrics to measure and track
         self.metric_funcs: dict[str, MetricUpdater] = {k: METRIC_FUNCTIONS[k] for k in self.study_config.metrics}
+        self.metric_order = self.define_metric_order()
 
         # Generate some null attributes to be filled later
         self.db_connection : Optional[sqlite3.Connection] = None
@@ -75,6 +76,20 @@ class StudyManager(object):
         return logger
 
     """ DB Management """
+    def define_metric_order(self):
+        # Initiate with our basic metrics
+        metric_order = [*UNIVERSAL_DB_KEYS]
+
+        # Append the metrics requested by the user
+        metric_order.extend(self.metric_funcs.keys())
+
+        # If the config requested it, extend with the list of model parameters
+        if self.study_config.track_params:
+            metric_order.extend(self.model_config.parameters.keys())
+
+        # Return the result
+        return metric_order
+
     def init_db(self):
         # Create the requested database file if it does not already exist
         if not self.study_config.output_path.exists():
@@ -84,9 +99,6 @@ class StudyManager(object):
         with sqlite3.connect(self.study_config.output_path) as con:
             # Initiate the cursor
             cur = con.cursor()
-
-            # Generate a list of all the columns to place in the table
-            col_vals = [*UNIVERSAL_DB_KEYS, *self.metric_funcs.keys()]
 
             # If we're enabling overwrites, delete any table with the same name before proceeding
             if self.overwrite:
@@ -100,6 +112,23 @@ class StudyManager(object):
                     cur.execute(
                         f"DROP TABLE {self.study_label};"
                     )
+
+            # Generate a list of all the columns to place in the table
+            col_vals = [*UNIVERSAL_DB_KEYS, *self.metric_funcs.keys()]
+
+            # If we're tracking the model parameters as well, add them to the DB columns as well
+            if self.study_config.track_params:
+                for k, v in self.model_config.parameters.items():
+                    # Everything that is not a dictionary defining how it's should be samples must be text-like
+                    if not isinstance(v, dict):
+                        col_vals.append(f"{k} TEXT")
+                    # If it is a dict, pull the type and check against it instead
+                    elif v.get("type") == "float":
+                        col_vals.append(f"{k} REAL")
+                    elif v.get("type") == "int":
+                        col_vals.append(f"{k} INTEGER")
+                    else:
+                        col_vals.append(f"{k} TEXT")
 
             # Create the table for this study
             try:
@@ -117,18 +146,32 @@ class StudyManager(object):
             # Return the result
             return con, cur
 
-    def save_results(self, replicate_n, trial_n, objective_val, metrics):
+    def save_results(self, replicate_n, trial, objective_val, metrics):
         # Generate the list of values to be saved to the DB
         new_entry_components = metrics.copy()
         new_entry_components.update({
             "replicate": replicate_n,
-            "trial": trial_n,
+            "trial": trial.number,
             "objective": objective_val
         })
 
+        # If the user wants model parameters saved, add them too
+        if self.study_config.track_params:
+            for k, v in self.model_config.parameters.items():
+                tv = trial.params.get(k, None)
+                # If the trial didn't have a value for the parameter, set it to null
+                if tv is None:
+                    new_entry_components[k] = "NULL"
+                # If the associated value is non-numeric, format it to play nicely with SQLite's queries
+                elif not isinstance(v, dict):
+                    new_entry_components[k] = f"'{tv}'"
+                # For everything else, just leave it be
+                else:
+                    new_entry_components[k] = tv
+
         # Format them into clean strings so they play nice with the DB query formatting
-        new_entry_components = [f"'{k}'={v}" for k, v in new_entry_components.items()]
-        new_entry = ", ".join(new_entry_components)
+        ordered_values = [str(new_entry_components[k]) for k in self.metric_order]
+        new_entry = ", ".join(ordered_values)
 
         # Push the results to the db
         self.db_cursor.execute(f"INSERT INTO {self.study_label} VALUES ({new_entry})")
@@ -237,7 +280,7 @@ class StudyManager(object):
             metric_vals['objective'] = objective_value
 
             # Save the metric values to the DB
-            self.save_results(rep, trial.number, objective_value, metric_vals)
+            self.save_results(rep, trial, objective_value, metric_vals)
 
             # Return the objective function so Optuna can run optimization based on it
             return objective_value

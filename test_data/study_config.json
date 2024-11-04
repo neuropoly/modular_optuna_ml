@@ -10,5 +10,6 @@
     "testing_log_loss",
     "testing_bacc"
   ],
+  "track_params": true,
   "output_path": "test_data/output.db"
 }

@@ -83,6 +83,16 @@ def is_not_null(logger: Logger) -> Check:
     return check
 
 # noinspection DuplicatedCode
+def is_bool(logger: Logger) -> Check:
+    """Confirms the values is a boolean"""
+    def check(k: str, v):
+        if type(v) is not bool:
+            logger.error(f"'{k}' specified in the configuration file was not a boolean; terminating")
+            raise TypeError
+        return v
+    return check
+
+# noinspection DuplicatedCode
 def is_int(logger: Logger) -> Check:
     """Confirms the value is an integer"""
     def check(k: str, v):
@@ -92,6 +102,7 @@ def is_int(logger: Logger) -> Check:
         return v
     return check
 
+# noinspection DuplicatedCode
 def is_float(logger: Logger) -> Check:
     """Confirms the value is a float"""
     def check(k: str, v):

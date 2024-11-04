@@ -2,7 +2,7 @@ from logging import Logger
 from pathlib import Path
 
 from config.utils import default_as, parse_data_config_entry, is_int, load_json_with_validation, is_not_null, as_str, \
-    as_path, is_valid_option, all_valid_options, is_list
+    as_path, is_valid_option, all_valid_options, is_list, is_bool
 from study import METRIC_FUNCTIONS
 
 
@@ -22,6 +22,7 @@ class StudyConfig(object):
         self.objective = self.parse_objective()
         self.metrics = self.parse_metrics()
         self.output_path = self.parse_output_path()
+        self.track_params = self.parse_track_params()
 
 
     @staticmethod
@@ -92,4 +93,10 @@ class StudyConfig(object):
         # TODO: Allow for non-filepath based storage options
         return parse_data_config_entry(
             "output_path", self.json_data, is_not_null(self.logger), as_path()
+        )
+
+    def parse_track_params(self):
+        default_false = default_as(False, self.logger)
+        return parse_data_config_entry(
+            "track_params", self.json_data,default_false, is_bool(self.logger)
         )

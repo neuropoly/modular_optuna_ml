@@ -154,8 +154,10 @@ class TabularManager(FeatureSplittableManager):
         if cat_threshold is not None:
             # Identify the categorical columns in question
             nunique_vals = train_df.nunique(axis=0, dropna=True)
-            detected_cats = test_df.loc[:, nunique_vals <= cat_threshold].columns
-            self.logger.debug(f"Auto-detected categorical columns: {detected_cats}")
+            detected_cats = list(test_df.loc[:, nunique_vals <= cat_threshold].columns)
+            detected_cats = [x for x in detected_cats if x not in explicit_cats]
+            if len(detected_cats) > 0:
+                self.logger.warning(f"Auto-detected categorical columns: {detected_cats}")
         cat_columns = [*explicit_cats, *detected_cats]
 
         # Process the categorical columns

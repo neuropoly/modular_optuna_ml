@@ -16,17 +16,17 @@ def load_json_with_validation(json_path: Path, logger: Logger = Logger.root) -> 
     """
     # Check to confirm the file exists and is a valid file
     if not json_path.exists():
-        logger.error("JSON configuration file designated was not found; terminating")
+        logger.error(f"JSON configuration file '{json_path}' was not found; terminating")
         raise FileNotFoundError()
     if not json_path.is_file():
-        logger.error("JSON configuration file specified was a directory, not a file; terminating")
+        logger.error(f"JSON configuration file '{json_path}' was a directory, not a file; terminating")
         raise TypeError()
     # Attempt to load the files contents w/ JSON
     with open(json_path) as json_file:
         try:
             json_data = json.load(json_file)
         except Exception as e:
-            logger.error("Failed to load JSON file, see error below; terminating")
+            logger.error(f"Failed to load JSON file '{json_path}', see error below; terminating")
             raise e
     return json_data
 

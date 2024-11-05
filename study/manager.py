@@ -5,7 +5,6 @@ from typing import Optional, TypeVar
 import numpy as np
 import optuna
 from optuna.samplers import TPESampler
-from scipy.constants import metric_ton
 from sklearn.model_selection import StratifiedKFold
 
 from config.data import DataConfig

@@ -1,7 +1,6 @@
-/test_data/full_metrics_deepseg.csv
-/test_data/manual_cleaning.ipynb
-/test_data/participants.tsv
 /presplit.tsv
 /debug/*
+/testing/output/output.db
+/testing/private/*
 /.idea/*
-/test_data/output.db
+

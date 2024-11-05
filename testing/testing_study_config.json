@@ -11,5 +11,5 @@
     "testing_bacc"
   ],
   "track_params": true,
-  "output_path": "test_data/output.db"
+  "output_path": "testing/output/output.db"
 }

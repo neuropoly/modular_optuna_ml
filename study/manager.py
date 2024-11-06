@@ -1,6 +1,6 @@
 import logging
 import sqlite3
-from typing import Optional, TypeVar
+from typing import Optional
 
 import numpy as np
 import optuna
@@ -11,7 +11,6 @@ from config.data import DataConfig
 from config.model import ModelConfig
 from config.study import StudyConfig
 from data.utils import FeatureSplittableManager
-from models.utils import OptunaModelManager
 from study import METRIC_FUNCTIONS, MetricUpdater
 
 UNIVERSAL_DB_KEYS = [
@@ -50,8 +49,32 @@ class StudyManager(object):
         self.objective_func = METRIC_FUNCTIONS.get(self.study_config.objective)
 
         # Track the list of other metrics to measure and track
-        self.metric_funcs: dict[str, MetricUpdater] = {k: METRIC_FUNCTIONS[k] for k in self.study_config.metrics}
-        self.metric_order = self.define_metric_order()
+        metric_funcs: dict[str, MetricUpdater] = {k: METRIC_FUNCTIONS[k] for k in self.study_config.metrics}
+
+        # Sort the metrics based on whether they need to be run on the train, validation, or test subsets
+        # TODO: Directly assess this on the config side
+        self.train_hooks = {}
+        self.validate_hooks = {}
+        self.test_hooks = {}
+        for k, v in metric_funcs.items():
+            if "train" in k:
+                self.train_hooks[k] = v
+            if "validate" in k:
+                self.validate_hooks[k] = v
+            if "test" in k:
+                self.test_hooks[k] = v
+
+        # Explicitly define a metric order for later DB-side management
+        self.db_order = [
+            *UNIVERSAL_DB_KEYS,
+            *self.train_hooks.keys(),
+            *self.validate_hooks.keys(),
+            *self.test_hooks.keys(),
+        ]
+
+        # Extend the DB order with the parameters of the model if the user requested it
+        if self.study_config.track_params:
+            self.db_order.extend(self.model_config.parameters.keys())
 
         # Generate some null attributes to be filled later
         self.db_connection : Optional[sqlite3.Connection] = None
@@ -82,20 +105,6 @@ class StudyManager(object):
         return logger
 
     """ DB Management """
-    def define_metric_order(self):
-        # Initiate with our basic metrics
-        metric_order = [*UNIVERSAL_DB_KEYS]
-
-        # Append the metrics requested by the user
-        metric_order.extend(self.metric_funcs.keys())
-
-        # If the config requested it, extend with the list of model parameters
-        if self.study_config.track_params:
-            metric_order.extend(self.model_config.parameters.keys())
-
-        # Return the result
-        return metric_order
-
     def init_db(self):
         # Create the requested database file if it does not already exist
         if not self.study_config.output_path.exists():
@@ -121,10 +130,16 @@ class StudyManager(object):
                     )
 
             # Generate a list of all the columns to place in the table
-            col_vals = [*UNIVERSAL_DB_KEYS, *self.metric_funcs.keys()]
+            col_vals = [
+                *UNIVERSAL_DB_KEYS,
+                *self.train_hooks.keys(),
+                *self.validate_hooks.keys(),
+                *self.test_hooks.keys(),
+            ]
 
             # If we're tracking the model parameters as well, add them to the DB columns as well
             if self.study_config.track_params:
+                # Add them back to the
                 for k, v in self.model_config.parameters.items():
                     # Everything that is not a dictionary defining how it's should be samples must be text-like
                     if not isinstance(v, dict):
@@ -177,7 +192,7 @@ class StudyManager(object):
                     new_entry_components[k] = tv
 
         # Format them into clean strings so they play nice with the DB query formatting
-        ordered_values = [str(new_entry_components[k]) for k in self.metric_order]
+        ordered_values = [str(new_entry_components[k]) for k in self.db_order]
         new_entry = ", ".join(ordered_values)
 
         # Push the results to the db
@@ -185,18 +200,6 @@ class StudyManager(object):
         self.db_connection.commit()
 
     """ ML Management """
-    T = TypeVar('T')
-    def calculate_metrics(self, manager: OptunaModelManager[T], model: T, context: dict):
-        # Instantiate the set of values to be saved to the DB
-        metric_dict = {}
-
-        # Calculate the rest
-        for k, metric_func in self.metric_funcs.items():
-            metric_dict[k] = metric_func(manager, model, context)
-
-        # Return the objective function's value for re-use
-        return metric_dict
-
     def run(self):
         # Control for RNG before proceeding
         init_seed = self.study_config.random_seed
@@ -247,6 +250,9 @@ class StudyManager(object):
 
         # Define the function which will utilize a trial's parameters to generate models to-be-tested
         def opt_func(trial: optuna.Trial):
+            # Initiate a dictionary to track all metrics requested to be recorded by the user
+            metric_vals = dict()
+
             # Run a subset analysis on the training data, split once for each cross requested
             cross_splitter = StratifiedKFold(n_splits=self.study_config.no_crosses, random_state=seed, shuffle=True)
             objective_cross_values = np.zeros(self.study_config.no_crosses)
@@ -275,16 +281,21 @@ class StudyManager(object):
             # Calculate the objective function's value on the test set as well
             objective_value = np.mean(objective_cross_values)
 
-            # Calculate any metrics requested by the user, including the objective function
+            # Calculate and record any validation metrics
             context = {
                 "train_x": train_x,
-                "train_y": train_y,
+                "train_y": train_y
+            }
+            for k, metric_func in self.validate_hooks.items():
+                metric_vals[k] = metric_func(self.model_config.model_manager, model, context)
+
+            # Calculate any metrics requested by the user, including the objective function
+            context = {
                 "test_x": test_x,
                 "test_y": test_y
             }
-            metric_vals = self.calculate_metrics(model_manager, model, context)
-            # noinspection PyTypeChecker
-            metric_vals['objective'] = objective_value
+            for k, metric_func in self.test_hooks.items():
+                metric_vals[k] = metric_func(self.model_config.model_manager, model, context)
 
             # Save the metric values to the DB
             self.save_results(rep, trial, objective_value, metric_vals)

@@ -11,5 +11,7 @@ METRIC_FUNCTIONS: dict[str, MetricUpdater] = {
     "training_log_loss": training_log_loss,
     "testing_log_loss": testing_log_loss,
     "training_bacc": training_bacc,
-    "testing_bacc": testing_bacc
+    "testing_bacc": testing_bacc,
+    "training_roc_auc": training_roc_auc,
+    "testing_roc_auc": testing_roc_auc,
 }

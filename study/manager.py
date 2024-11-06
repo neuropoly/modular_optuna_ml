@@ -48,29 +48,13 @@ class StudyManager(object):
         # Pull the objective function for this study
         self.objective_func = METRIC_FUNCTIONS.get(self.study_config.objective)
 
-        # Track the list of other metrics to measure and track
-        metric_funcs: dict[str, MetricUpdater] = {k: METRIC_FUNCTIONS[k] for k in self.study_config.metrics}
-
-        # Sort the metrics based on whether they need to be run on the train, validation, or test subsets
-        # TODO: Directly assess this on the config side
-        self.train_hooks = {}
-        self.validate_hooks = {}
-        self.test_hooks = {}
-        for k, v in metric_funcs.items():
-            if "train" in k:
-                self.train_hooks[k] = v
-            if "validate" in k:
-                self.validate_hooks[k] = v
-            if "test" in k:
-                self.test_hooks[k] = v
+        # Track each of the metric calculating functions which needs to be hook in to run throughout model assessment
+        self.train_hooks = {f"'{k} (train)'": METRIC_FUNCTIONS[k] for k in self.study_config.train_hooks}
+        self.validate_hooks = {f"'{k} (validate)'": METRIC_FUNCTIONS[k] for k in self.study_config.validate_hooks}
+        self.test_hooks = {f"'{k} (test)'": METRIC_FUNCTIONS[k] for k in self.study_config.test_hooks}
 
         # Explicitly define a metric order for later DB-side management
-        self.db_order = [
-            *UNIVERSAL_DB_KEYS,
-            *self.train_hooks.keys(),
-            *self.validate_hooks.keys(),
-            *self.test_hooks.keys(),
-        ]
+        self.db_order = self.non_param_cols()
 
         # Extend the DB order with the parameters of the model if the user requested it
         if self.study_config.track_params:
@@ -80,7 +64,7 @@ class StudyManager(object):
         self.db_connection : Optional[sqlite3.Connection] = None
         self.db_cursor : Optional[sqlite3.Cursor] = None
 
-    """ Logger Management """
+    """ Utils """
     def init_logger(self):
         """Generates the logger for this study"""
         logger = logging.getLogger(self.study_config.label)
@@ -103,6 +87,14 @@ class StudyManager(object):
 
         # Return the result
         return logger
+
+    def non_param_cols(self):
+        return [
+            *UNIVERSAL_DB_KEYS,
+            *self.train_hooks.keys(),
+            *self.validate_hooks.keys(),
+            *self.test_hooks.keys(),
+        ]
 
     """ DB Management """
     def init_db(self):
@@ -130,12 +122,7 @@ class StudyManager(object):
                     )
 
             # Generate a list of all the columns to place in the table
-            col_vals = [
-                *UNIVERSAL_DB_KEYS,
-                *self.train_hooks.keys(),
-                *self.validate_hooks.keys(),
-                *self.test_hooks.keys(),
-            ]
+            col_vals = self.non_param_cols()
 
             # If we're tracking the model parameters as well, add them to the DB columns as well
             if self.study_config.track_params:
@@ -266,13 +253,7 @@ class StudyManager(object):
                 model.fit(tx, np.ravel(ty))  # 'ravel' saves us a warning log
 
                 # Calculate the objective metric for this function and store it
-                context = {
-                    "train_x": tx,
-                    "train_y": ty,
-                    "test_x": vx,
-                    "test_y": vy
-                }
-                objective_cross_values[i] = self.objective_func(model_manager, model, context)
+                objective_cross_values[i] = self.objective_func(model_manager, model, vx, vy)
 
             # Generate and fit the model to the full training set
             model = model_manager.build_model(trial)
@@ -282,20 +263,12 @@ class StudyManager(object):
             objective_value = np.mean(objective_cross_values)
 
             # Calculate and record any validation metrics
-            context = {
-                "train_x": train_x,
-                "train_y": train_y
-            }
             for k, metric_func in self.validate_hooks.items():
-                metric_vals[k] = metric_func(self.model_config.model_manager, model, context)
+                metric_vals[k] = metric_func(self.model_config.model_manager, model, train_x, train_y)
 
             # Calculate any metrics requested by the user, including the objective function
-            context = {
-                "test_x": test_x,
-                "test_y": test_y
-            }
             for k, metric_func in self.test_hooks.items():
-                metric_vals[k] = metric_func(self.model_config.model_manager, model, context)
+                metric_vals[k] = metric_func(self.model_config.model_manager, model, test_x, test_y)
 
             # Save the metric values to the DB
             self.save_results(rep, trial, objective_value, metric_vals)

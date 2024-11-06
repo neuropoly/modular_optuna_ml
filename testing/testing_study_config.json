@@ -5,11 +5,16 @@
   "no_replicates": 10,
   "no_crosses": 10,
   "no_trials": 10,
-  "objective": "training_log_loss",
-  "metrics": [
-    "testing_log_loss",
-    "testing_bacc"
-  ],
+  "objective": "log_loss",
+  "metrics": {
+    "validate": [
+      "balanced_accuracy"
+    ],
+    "test": [
+      "balanced_accuracy",
+      "log_loss"
+    ]
+  },
   "track_params": true,
   "output_path": "testing/output/output.db"
 }

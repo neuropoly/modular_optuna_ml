@@ -1,3 +1,18 @@
+"""
+Main entrypoint for analyses using this framework.
+
+Running this program requires 3 configuration files:
+    - A data configuration file, which describes which data to analyse, and how to process it before ML analysis
+    - A model configuration file, which describes which model to test, as well as which hyperparameters to explore
+    - A study configuration file, which dictates how to optimize the model's hyperparameters, as well as what metrics
+        to record and where to save them
+
+Example usage (using the testing data provided in this repository):
+> python run_ml_analysis.py -d iris_config.json -m log_reg.json -s testing_study_config.json
+
+Author: Kalum Ost
+"""
+
 from argparse import ArgumentParser
 from pathlib import Path
 

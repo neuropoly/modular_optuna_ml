@@ -1,3 +1,6 @@
+"""
+Contains default implementations for a number of ensemble models within SciKitLearn for use in this framework
+"""
 from optuna import Trial
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 

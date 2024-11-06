@@ -1,3 +1,7 @@
+"""
+Contains default implementations for a number of support vector models within SciKitLearn for use in this framework
+"""
+
 from optuna import Trial
 from sklearn.svm import SVC
 

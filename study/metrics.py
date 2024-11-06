@@ -1,6 +1,8 @@
-from typing import TypeVar
+"""
+Metric-reporting closures for use in this framework.
+"""
 
-import numpy as np
+from typing import TypeVar
 
 from sklearn.metrics import log_loss, balanced_accuracy_score, roc_auc_score
 

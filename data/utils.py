@@ -1,3 +1,12 @@
+"""
+Abstract classes that allow us to enforce certain behaviours in data management classes
+
+All data managers which read data for ML should subclass DataManager.
+
+If there is the possibility that multiple "features" exist in the datasets managed by the class, subclass
+"FeatureSplittableManager" instead.
+"""
+
 from abc import ABC, abstractmethod
 from logging import Logger
 from typing import Self

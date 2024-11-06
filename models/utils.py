@@ -1,4 +1,3 @@
-import typing
 from abc import ABC, abstractmethod
 from typing import Any, TypeVar, Generic
 
@@ -8,7 +7,8 @@ T = TypeVar('T')
 
 class OptunaModelManager(Generic[T], ABC):
     """
-    A manager for producing and evaluating Optuna-tunable models
+    An abstract class which should be subclassed and implemented for all machine learning models which want automated
+    hyperparameter tuning within this framework.
     """
     @staticmethod
     def optuna_trial_param_parser(key: str, params: Any):

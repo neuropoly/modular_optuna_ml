@@ -9,6 +9,9 @@ from models.utils import OptunaModelManager
 
 
 class ModelConfig(object):
+    """
+    Configuration manager which handles the loading and parsing of model configuration JSON files
+    """
     def __init__(self, json_data: dict, logger: Logger = Logger.root):
         # Save the logger and entry data for later
         self.logger = logger

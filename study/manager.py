@@ -22,6 +22,13 @@ UNIVERSAL_DB_KEYS = [
 
 
 class StudyManager(object):
+    """
+    Manages an Optuna study, handling and co-ordinating it with the dataset requested to be parsed,
+    and the model requested to be optimized by said study
+
+    Always runs as though we are testing in a multi-replicate, cross-validated way; you can disable this by proxy
+    by setting the `n_replicates` and `n_crosses` to be 1.
+    """
     def __init__(self, data_config: DataConfig, model_config: ModelConfig, study_config: StudyConfig,
                  overwrite: bool, debug: bool):
         # Track each of the configs for this analysis

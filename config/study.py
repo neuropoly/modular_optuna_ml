@@ -7,6 +7,9 @@ from study import METRIC_FUNCTIONS
 
 
 class StudyConfig(object):
+    """
+    Configuration manager which handles the loading and parsing of study configuration JSON files
+    """
     def __init__(self, json_data: dict, logger: Logger = Logger.root):
         # Track the logger and data for use later
         self.logger = logger

@@ -8,6 +8,9 @@ from data.utils import DataManager
 
 
 class DataConfig(object):
+    """
+    Configuration manager which handles the loading and parsing of data configuration JSON files
+    """
     def __init__(self, json_data: dict, logger: Logger = Logger.root):
         # Track the logger and data for use later
         self.logger = logger

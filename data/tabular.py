@@ -14,10 +14,13 @@ from data.utils import FeatureSplittableManager
 
 
 class TabularManager(FeatureSplittableManager):
+    """
+    Data manager for data stored in tabular data formats (i.e. 'csv')
+
+    Uses a Panda's dataframe as a backend to read the files and manage the majority of data queries and modifications.
+    """
     def __init__(self):
-        """
-        Use 'build_from_config_dict' below, rather than using this constructor directly
-        """
+        # Use 'build_from_config_dict' below, rather than using this constructor directly
         self.logger = Logger.root
 
         self.config : Optional[TabularManagerConfig] = None
@@ -39,7 +42,7 @@ class TabularManager(FeatureSplittableManager):
         return manager
 
     """
-    Pseudo-caching property here, so we can defer File I/O until its needed
+    Pseudo-caching property here, so we can defer File I/O until it is needed
     """
     @property
     def data(self):
@@ -271,10 +274,10 @@ class TabularManager(FeatureSplittableManager):
         # Return the result
         return new_manager
 
-"""
-Class to handle config options unique to this class
-"""
 class TabularManagerConfig(object):
+    """
+    Class to handle config options unique to the TabularManager class
+    """
     def __init__(self, config_data: dict, logger: Logger = Logger.root):
         # Track the logger and data for use later
         self.logger = logger

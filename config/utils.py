@@ -1,5 +1,7 @@
 """
-Collection of utilities for managing configuration files dynamically
+Collection of utilities for managing configuration files used in this tool in a dynamic way.
+
+Author: Kalum Ost
 """
 import json
 from logging import Logger

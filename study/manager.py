@@ -11,7 +11,7 @@ from config.data import DataConfig
 from config.model import ModelConfig
 from config.study import StudyConfig
 from data.utils import FeatureSplittableManager
-from study import METRIC_FUNCTIONS, MetricUpdater
+from study import METRIC_FUNCTIONS
 
 UNIVERSAL_DB_KEYS = [
     'replicate',
@@ -49,9 +49,9 @@ class StudyManager(object):
         self.objective_func = METRIC_FUNCTIONS.get(self.study_config.objective)
 
         # Track each of the metric calculating functions which needs to be hook in to run throughout model assessment
-        self.train_hooks = {f"'{k} (train)'": METRIC_FUNCTIONS[k] for k in self.study_config.train_hooks}
-        self.validate_hooks = {f"'{k} (validate)'": METRIC_FUNCTIONS[k] for k in self.study_config.validate_hooks}
-        self.test_hooks = {f"'{k} (test)'": METRIC_FUNCTIONS[k] for k in self.study_config.test_hooks}
+        self.train_hooks = {f"{k} (train)": METRIC_FUNCTIONS[k] for k in self.study_config.train_hooks}
+        self.validate_hooks = {f"{k} (validate)": METRIC_FUNCTIONS[k] for k in self.study_config.validate_hooks}
+        self.test_hooks = {f"{k} (test)": METRIC_FUNCTIONS[k] for k in self.study_config.test_hooks}
 
         # Explicitly define a metric order for later DB-side management
         self.db_order = self.non_param_cols()
@@ -88,10 +88,17 @@ class StudyManager(object):
         # Return the result
         return logger
 
+    def train_metric_cols(self):
+        train_cols = []
+        for k, v in self.train_hooks.items():
+            new_cols = [f"{k} [{i}]" for i in range(self.study_config.no_crosses)]
+            train_cols.extend(new_cols)
+        return train_cols
+
     def non_param_cols(self):
         return [
             *UNIVERSAL_DB_KEYS,
-            *self.train_hooks.keys(),
+            *self.train_metric_cols(),
             *self.validate_hooks.keys(),
             *self.test_hooks.keys(),
         ]
@@ -122,7 +129,7 @@ class StudyManager(object):
                     )
 
             # Generate a list of all the columns to place in the table
-            col_vals = self.non_param_cols()
+            col_vals = [f"'{c}'" for c in self.non_param_cols()]
 
             # If we're tracking the model parameters as well, add them to the DB columns as well
             if self.study_config.track_params:
@@ -254,6 +261,10 @@ class StudyManager(object):
 
                 # Calculate the objective metric for this function and store it
                 objective_cross_values[i] = self.objective_func(model_manager, model, vx, vy)
+
+                # Calculate the metrics requested by the user at the "train" hook
+                for k, v in self.train_hooks.items():
+                    metric_vals[f"{k} [{i}]"] = v(model_manager, model, tx, ty)
 
             # Generate and fit the model to the full training set
             model = model_manager.build_model(trial)

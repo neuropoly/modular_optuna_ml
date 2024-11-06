@@ -7,6 +7,9 @@
   "no_trials": 10,
   "objective": "log_loss",
   "metrics": {
+    "train": [
+      "log_loss"
+    ],
     "validate": [
       "balanced_accuracy"
     ],

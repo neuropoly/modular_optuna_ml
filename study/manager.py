@@ -10,7 +10,8 @@ from sklearn.model_selection import StratifiedKFold
 from config.data import DataConfig
 from config.model import ModelConfig
 from config.study import StudyConfig
-from data.utils import FeatureSplittableManager
+from data import BaseDataManager
+from data.mixins import MultiFeatureMixin
 from study import METRIC_FUNCTIONS
 
 UNIVERSAL_DB_KEYS = [
@@ -164,7 +165,7 @@ class StudyManager(object):
 
     def save_results(self, replicate_n, trial, objective_val, metrics):
         # Generate the list of values to be saved to the DB
-        new_entry_components = metrics.copy()
+        new_entry_components = metrics.shallow_copy()
         new_entry_components.update({
             "replicate": replicate_n,
             "trial": trial.number,
@@ -207,20 +208,24 @@ class StudyManager(object):
         skf_splitter = StratifiedKFold(n_splits=self.study_config.no_replicates, random_state=init_seed, shuffle=True)
 
         # Process the dataframe with any operations that should be done pre-split
-        data_manager = data_manager.process_pre_analysis()
+        data_manager = data_manager.pre_split()
 
         # Isolate the target column(s) from the dataset
-        if isinstance(data_manager, FeatureSplittableManager):
-            x = data_manager
-            y = data_manager.pop_features(self.study_config.target)
+        if isinstance(data_manager, MultiFeatureMixin):
+            x = data_manager.get_features([c for c in data_manager.features() if c != self.study_config.target])
+            y = data_manager.get_features(self.study_config.target)
+            # Why is PyCharm's type hinting so dogshit?
+            x: BaseDataManager | MultiFeatureMixin
+            y: BaseDataManager | MultiFeatureMixin
         else:
             raise NotImplementedError("Unsupervised analyses are not currently supported")
+
 
         # Initiate the DB and create a table within it for the study's results
         self.db_connection, self.db_cursor = self.init_db()
 
         # Run the study once for each replicate
-        for i, (train_idx, test_idx) in enumerate(skf_splitter.split(x.array(), y.array())):
+        for i, (train_idx, test_idx) in enumerate(skf_splitter.split(x.as_array(), y.as_array())):
             # Set up the workspace for this replicate
             s = replicate_seeds[i]
             np.random.seed(s)
@@ -229,7 +234,7 @@ class StudyManager(object):
             self.logger.debug(f"Test/Train ratio (split {i}): {len(test_idx)}/{len(train_idx)}")
 
             # Split the data using the indices provided
-            train_x, test_x = x.train_test_split(train_idx, test_idx)
+            train_x, test_x = x.split(train_idx, test_idx)
             train_y, test_y = y[train_idx], y[test_idx]
 
             # Run a sub-study using this data
@@ -250,14 +255,15 @@ class StudyManager(object):
             # Run a subset analysis on the training data, split once for each cross requested
             cross_splitter = StratifiedKFold(n_splits=self.study_config.no_crosses, random_state=seed, shuffle=True)
             objective_cross_values = np.zeros(self.study_config.no_crosses)
-            for i, (ti, vi) in enumerate(cross_splitter.split(train_x.array(), train_y.array())):
+            for i, (ti, vi) in enumerate(cross_splitter.split(train_x.as_array(), train_y.as_array())):
                 # Split the components along the desired axes
                 tx, vx = train_x[ti], train_x[vi]
                 ty, vy = train_y[ti], train_y[vi]
 
                 # Generate and fit a new instance of the model to the training subset
                 model = model_manager.build_model(trial)
-                model.fit(tx, np.ravel(ty))  # 'ravel' saves us a warning log
+                rty = np.ravel(ty.as_array())
+                model.fit(tx.as_array(), rty)  # 'ravel' saves us a warning log
 
                 # Calculate the objective metric for this function and store it
                 objective_cross_values[i] = self.objective_func(model_manager, model, vx, vy)

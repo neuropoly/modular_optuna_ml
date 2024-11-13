@@ -3,8 +3,7 @@ from pathlib import Path
 
 from config.utils import as_str, is_not_null, parse_data_config_entry, \
     load_json_with_validation
-from data import MANAGER_MAP
-from data.utils import DataManager
+from data.base import BaseDataManager, DATA_MANAGERS
 
 
 class DataConfig(object):
@@ -21,8 +20,10 @@ class DataConfig(object):
         self.label = self.parse_label()
 
         # Parse the remaining config using the config manager associated with the format
-        self.manager_cls = MANAGER_MAP.get(self.format)
-        self.data_manager : DataManager = self.manager_cls.build_from_config_dict(self.json_data)
+        self.data_manager : BaseDataManager = self.parse_manager()
+
+        # Report any remaining values in the config which were not utilized
+        self.report_remaining_values()
 
     @staticmethod
     def from_json_file(json_file: Path, logger: Logger = Logger.root):
@@ -47,6 +48,12 @@ class DataConfig(object):
         return parse_data_config_entry(
             "label", self.json_data, is_not_null(self.logger), as_str(self.logger)
         )
+
+    def parse_manager(self):
+        manager_cls = DATA_MANAGERS.get(self.format, None)
+        if manager_cls is None:
+            raise ValueError(f"No Data Manager of type '{self.format}' is currently registered!")
+        return manager_cls.from_config(self.json_data)
 
     def report_remaining_values(self):
         if len(self.json_data) == 0:

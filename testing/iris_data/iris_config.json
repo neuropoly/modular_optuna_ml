@@ -4,8 +4,23 @@
   "data_source": "./testing/iris_data/iris_testing.tsv",
   "separator": "\t",
   "foo": "bar",
-  "drop_columns": [
-    "Unnamed: 0"
+  "pre_split_hooks": [
+    {
+      "type": "drop_features_explicit",
+      "features": ["color"]
+    },
+    {
+      "type": "feature_drop_null",
+      "threshold": 0.5
+    }, {
+      "type": "sample_drop_null",
+      "threshold": 0.5
+    }
   ],
-  "categorical_threshold": 5
+  "post_split_hooks": [
+    {
+      "type": "imputation_simple",
+      "strategy": "mean"
+    }
+  ]
 }

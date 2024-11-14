@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 from typing import Optional
+from copy import copy as shallow_copy
 
 import numpy as np
 import optuna
@@ -12,7 +13,7 @@ from config.model import ModelConfig
 from config.study import StudyConfig
 from data import BaseDataManager
 from data.mixins import MultiFeatureMixin
-from study import METRIC_FUNCTIONS
+from study import METRIC_FUNCTIONS, MetricUpdater
 
 UNIVERSAL_DB_KEYS = [
     'replicate',
@@ -47,7 +48,7 @@ class StudyManager(object):
         self.study_label = f"{self.study_config.label}__{self.model_config.label}__{self.data_config.label}"
 
         # Pull the objective function for this study
-        self.objective_func = METRIC_FUNCTIONS.get(self.study_config.objective)
+        self.objective_func: MetricUpdater = METRIC_FUNCTIONS.get(self.study_config.objective)
 
         # Track each of the metric calculating functions which needs to be hook in to run throughout model assessment
         self.train_hooks = {f"{k} (train)": METRIC_FUNCTIONS[k] for k in self.study_config.train_hooks}
@@ -165,7 +166,7 @@ class StudyManager(object):
 
     def save_results(self, replicate_n, trial, objective_val, metrics):
         # Generate the list of values to be saved to the DB
-        new_entry_components = metrics.shallow_copy()
+        new_entry_components = shallow_copy(metrics)
         new_entry_components.update({
             "replicate": replicate_n,
             "trial": trial.number,
@@ -235,12 +236,21 @@ class StudyManager(object):
 
             # Split the data using the indices provided
             train_x, test_x = x.split(train_idx, test_idx)
+            # Naive split is required here to avoid running post-split processing
             train_y, test_y = y[train_idx], y[test_idx]
 
             # Run a sub-study using this data
             self.run_supervised(i, train_x, train_y, test_x, test_y, s)
 
-    def run_supervised(self, rep: int, train_x, train_y, test_x, test_y, seed):
+    def run_supervised(
+            self,
+            rep: int,
+            train_x: BaseDataManager,
+            train_y: BaseDataManager,
+            test_x: BaseDataManager,
+            test_y: BaseDataManager,
+            seed: int
+    ):
         # Generate the study name for this run
         study_name = f"{self.study_label} [{rep}]"
 
@@ -257,7 +267,7 @@ class StudyManager(object):
             objective_cross_values = np.zeros(self.study_config.no_crosses)
             for i, (ti, vi) in enumerate(cross_splitter.split(train_x.as_array(), train_y.as_array())):
                 # Split the components along the desired axes
-                tx, vx = train_x[ti], train_x[vi]
+                tx, vx = train_x.split(ti, vi)
                 ty, vy = train_y[ti], train_y[vi]
 
                 # Generate and fit a new instance of the model to the training subset
@@ -266,15 +276,16 @@ class StudyManager(object):
                 model.fit(tx.as_array(), rty)  # 'ravel' saves us a warning log
 
                 # Calculate the objective metric for this function and store it
-                objective_cross_values[i] = self.objective_func(model_manager, model, vx, vy)
+                objective_cross_values[i] = self.objective_func(model_manager, model, vx.as_array(), vy.as_array())
 
                 # Calculate the metrics requested by the user at the "train" hook
                 for k, v in self.train_hooks.items():
-                    metric_vals[f"{k} [{i}]"] = v(model_manager, model, tx, ty)
+                    metric_vals[f"{k} [{i}]"] = v(model_manager, model, tx.as_array(), ty.as_array())
 
             # Generate and fit the model to the full training set
             model = model_manager.build_model(trial)
-            model.fit(train_x, np.ravel(train_y))  # Ravel prevents a warning log
+            train_y_flat = np.ravel(train_y.as_array()) # Ravel prevents a warning log
+            model.fit(train_x.as_array(), train_y_flat)
 
             # Calculate the objective function's value on the test set as well
             objective_value = np.mean(objective_cross_values)

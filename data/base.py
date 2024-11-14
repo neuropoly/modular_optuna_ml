@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from logging import Logger
 from typing import Self, Sequence, Type
 
+import numpy as np
+
 
 # Denotes the type of data this class manages (float, filepaths etc.)
 class BaseDataManager(Sequence, ABC):
@@ -29,9 +31,9 @@ class BaseDataManager(Sequence, ABC):
         """
 
     @abstractmethod
-    def as_array(self):
+    def as_array(self) -> np.ndarray:
         """
-        Return the array representation of this Data Manager. Needed as some tools insist on using numpy-like arrays
+        Return a numpy array representation of this Data Manager. Needed as some tools insist on using this type
         """
         ...
 

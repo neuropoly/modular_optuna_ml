@@ -2,10 +2,10 @@ from inspect import isclass
 from logging import Logger
 from pathlib import Path
 
-from config.utils import parse_data_config_entry, is_not_null, as_str, is_valid_option, default_as, is_dict, \
-    load_json_with_validation
+from config.utils import as_str, default_as, is_dict, is_not_null, is_valid_option, load_json_with_validation, \
+    parse_data_config_entry
 from models import MANAGER_MAP
-from models.utils import OptunaModelManager
+from models.base import OptunaModelManager
 
 
 class ModelConfig(object):

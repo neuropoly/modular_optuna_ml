@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar, Generic
+from typing import Any, Generic, TypeVar
 
+import numpy as np
 from optuna import Trial
 
 T = TypeVar('T')
@@ -78,7 +79,7 @@ class OptunaModelManager(Generic[T], ABC):
         return self._type_T
 
     @abstractmethod
-    def build_model(self, trial: Trial):
+    def build_model(self, trial: Trial) -> T:
         """
         Build a corresponding model using parameters derived from an Optuna trial.
         :param trial: The Optuna trial to generate params from
@@ -87,16 +88,16 @@ class OptunaModelManager(Generic[T], ABC):
         return None
 
     @abstractmethod
-    def predict(self, model: T, x):
+    def predict(self, model: T, x: np.ndarray) -> np.ndarray:
         """
         Generate the predictions from a model of the type managed by this class
         :param model: The model to generate predictions from
-        :param x: The data for said model to use to generate the predictions
-        :return: The generated predictions
+        :param x: The data for said model to use to generate the predictions, in NP-array-like format
+        :return: The generated predictions, in a np-like array
         """
-        return None
+        pass
 
-    def predict_proba(self, model: T, x):
+    def predict_proba(self, model: T, x: np.ndarray) -> np.ndarray:
         """
         Predict the (pseudo-) probability of each class the model has been tasked with. Optional implementation, as
         not all OptunaModelManagers manage categorical models

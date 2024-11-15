@@ -209,7 +209,7 @@ class StudyManager(object):
         skf_splitter = StratifiedKFold(n_splits=self.study_config.no_replicates, random_state=init_seed, shuffle=True)
 
         # Process the dataframe with any operations that should be done pre-split
-        data_manager = data_manager.pre_split()
+        data_manager = data_manager.pre_split(is_cross=False)
 
         # Isolate the target column(s) from the dataset
         if isinstance(data_manager, MultiFeatureMixin):
@@ -228,14 +228,14 @@ class StudyManager(object):
         # Run the study once for each replicate
         for i, (train_idx, test_idx) in enumerate(skf_splitter.split(x.as_array(), y.as_array())):
             # Set up the workspace for this replicate
-            s = replicate_seeds[i]
+            s = int(replicate_seeds[i])
             np.random.seed(s)
 
             # If debugging, report the sizes
             self.logger.debug(f"Test/Train ratio (split {i}): {len(test_idx)}/{len(train_idx)}")
 
             # Split the data using the indices provided
-            train_x, test_x = x.split(train_idx, test_idx)
+            train_x, test_x = x.split(train_idx, test_idx, is_cross=False)
             # Naive split is required here to avoid running post-split processing
             train_y, test_y = y[train_idx], y[test_idx]
 
@@ -262,12 +262,16 @@ class StudyManager(object):
             # Initiate a dictionary to track all metrics requested to be recorded by the user
             metric_vals = dict()
 
+            # Re-run any preprocessing the user has requested on the training subset
+            prepped_x = train_x.pre_split(is_cross=True)
+
             # Run a subset analysis on the training data, split once for each cross requested
             cross_splitter = StratifiedKFold(n_splits=self.study_config.no_crosses, random_state=seed, shuffle=True)
             objective_cross_values = np.zeros(self.study_config.no_crosses)
             for i, (ti, vi) in enumerate(cross_splitter.split(train_x.as_array(), train_y.as_array())):
+
                 # Split the components along the desired axes
-                tx, vx = train_x.split(ti, vi)
+                tx, vx = prepped_x.split(ti, vi, is_cross=True)
                 ty, vy = train_y[ti], train_y[vi]
 
                 # Generate and fit a new instance of the model to the training subset
@@ -276,23 +280,23 @@ class StudyManager(object):
                 model.fit(tx.as_array(), rty)  # 'ravel' saves us a warning log
 
                 # Calculate the objective metric for this function and store it
-                objective_cross_values[i] = self.objective_func(model_manager, model, vx.as_array(), vy.as_array())
+                objective_cross_values[i] = self.objective_func(model_manager, model, vx, vy)
 
                 # Calculate the metrics requested by the user at the "train" hook
                 for k, v in self.train_hooks.items():
-                    metric_vals[f"{k} [{i}]"] = v(model_manager, model, tx.as_array(), ty.as_array())
+                    metric_vals[f"{k} [{i}]"] = v(model_manager, model, tx, ty)
 
             # Generate and fit the model to the full training set
             model = model_manager.build_model(trial)
             train_y_flat = np.ravel(train_y.as_array()) # Ravel prevents a warning log
-            model.fit(train_x.as_array(), train_y_flat)
+            model.fit(prepped_x.as_array(), train_y_flat)
 
             # Calculate the objective function's value on the test set as well
             objective_value = np.mean(objective_cross_values)
 
             # Calculate and record any validation metrics
             for k, metric_func in self.validate_hooks.items():
-                metric_vals[k] = metric_func(self.model_config.model_manager, model, train_x, train_y)
+                metric_vals[k] = metric_func(self.model_config.model_manager, model, prepped_x, train_y)
 
             # Calculate any metrics requested by the user, including the objective function
             for k, metric_func in self.test_hooks.items():

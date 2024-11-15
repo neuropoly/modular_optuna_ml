@@ -38,7 +38,7 @@ class BaseDataManager(Sequence, ABC):
         ...
 
     @abstractmethod
-    def pre_split(self) -> Self:
+    def pre_split(self, is_cross: bool) -> Self:
         """
         Run anything that needs to be run prior to the data being train-test split.
         Returns and instance with these modifications applied
@@ -46,11 +46,12 @@ class BaseDataManager(Sequence, ABC):
         ...
 
     @abstractmethod
-    def split(self, train_idx, test_idx) -> (Self, Self):
+    def split(self, train_idx, test_idx, is_cross: bool) -> (Self, Self):
         """
         Split the data into two subsets. Any post-split modifications should be done here
         :param train_idx: The sample indices for the training set
         :param test_idx: The sample indices for the testing set
+        :param is_cross: Whether this split is being run during cross-validation (v.s. during replicate setup)
         :return: Two sub-instances of the same type of datamanager, being the training and testing data, respectively
         """
         ...

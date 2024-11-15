@@ -20,3 +20,5 @@ def registered_data_hook(key: str):
 # TODO: Find a more elegant way to do this
 from data.hooks.feature_selection import SampleNullityDrop, FeatureNullityDrop, ExplicitDrop, ExplicitKeep
 from data.hooks.imputation import SimpleImputation
+from data.hooks.encoding import OneHotEncoding
+from data.hooks.standardization import StandardScaling

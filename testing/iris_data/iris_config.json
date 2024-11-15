@@ -20,7 +20,11 @@
   "post_split_hooks": [
     {
       "type": "imputation_simple",
-      "strategy": "mean"
+      "strategy": "mean",
+      "run_per_cross": true
+    }, {
+      "type": "standard_scaling",
+      "run_per_cross": true
     }
   ]
 }

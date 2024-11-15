@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from logging import Logger
 from typing import Self
 
+from config.utils import default_as, is_bool, parse_data_config_entry
 from data.base import BaseDataManager
 
 
@@ -12,6 +13,19 @@ class BaseDataHook(ABC):
     These should be configured during program init (to allow for fail-faster checking),
     after which they will be run at the user-specified points within the dataset
     """
+    def __init__(self, config: dict, logger: Logger = Logger.root):
+        # Basic init implementation which tracks attributes shared with all data hooks
+        self.logger = logger
+
+        self.replicate_run = parse_data_config_entry(
+            "run_per_replicate", config,
+            default_as(True, logger), is_bool(logger)
+        )
+        self.cross_run = parse_data_config_entry(
+            "run_per_cross", config,
+            default_as(False, logger), is_bool(logger)
+        )
+
     @classmethod
     @abstractmethod
     def from_config(cls, config: dict, logger: Logger = Logger.root) -> Self:
@@ -22,6 +36,12 @@ class BaseDataHook(ABC):
         :return: A new instance of this hook type
         """
         ...
+
+    def should_run_during_replicates(self) -> bool:
+        return self.replicate_run
+
+    def should_run_during_crosses(self) -> bool:
+        return self.cross_run
 
 
 class StatelessHook(BaseDataHook, ABC):

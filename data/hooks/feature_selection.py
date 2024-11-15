@@ -14,20 +14,19 @@ from data.mixins import MultiFeatureMixin
 
 ### Explicit Feature Selection ###
 class ExplicitFeatures(StatelessHook, ABC):
-    def __init__(self, config: dict, logger: Logger = Logger.root):
-        # Keep tabs on the logger
-        self.logger = logger
+    def __init__(self, config: dict, **kwargs):
+        super().__init__(config, **kwargs)
 
         # Get the list of features to parse
         features = parse_data_config_entry(
             "features", config,
-            is_list(logger)
+            is_list(self.logger)
         )
         self.features = features
 
     @classmethod
     def from_config(cls, config: dict, logger: Logger = Logger.root) -> Self:
-        new_instance = cls(config, logger)
+        new_instance = cls(config, logger=logger)
         return new_instance
 
 @registered_data_hook("drop_features_explicit")
@@ -51,9 +50,8 @@ class ExplicitKeep(ExplicitFeatures):
 
 ### Feature Selection by Null Content ###
 class NullityDrop(StatelessHook, ABC):
-    def __init__(self, config: dict, logger: Logger = Logger.root):
-        # Keep tabs on the logger
-        self.logger = logger
+    def __init__(self, config: dict, **kwargs):
+        super().__init__(config, **kwargs)
 
         # Get the threshold for how to generate this instance
         self.threshold = parse_data_config_entry(

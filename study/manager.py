@@ -208,9 +208,6 @@ class StudyManager(object):
         replicate_seeds = np.random.randint(0, np.iinfo(np.int32).max, size=self.study_config.no_replicates)
         skf_splitter = StratifiedKFold(n_splits=self.study_config.no_replicates, random_state=init_seed, shuffle=True)
 
-        # Process the dataframe with any operations that should be done pre-split
-        data_manager = data_manager.pre_split(is_cross=False)
-
         # Isolate the target column(s) from the dataset
         if isinstance(data_manager, MultiFeatureMixin):
             x = data_manager.get_features([c for c in data_manager.features() if c != self.study_config.target])
@@ -221,6 +218,8 @@ class StudyManager(object):
         else:
             raise NotImplementedError("Unsupervised analyses are not currently supported")
 
+        # Process the dataset with any operations that should be done pre-split
+        x = x.pre_split(is_cross=False)
 
         # Initiate the DB and create a table within it for the study's results
         self.db_connection, self.db_cursor = self.init_db()

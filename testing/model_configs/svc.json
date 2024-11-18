@@ -2,7 +2,10 @@
   "label": "SupportVectorClassifier",
   "model": "SVC",
   "parameters": {
-    "kernel": ["linear", "poly", "rbf", "sigmoid"],
+    "kernel": {
+      "type": "categorical",
+      "choices": ["linear", "poly", "rbf", "sigmoid"]
+    },
     "c": {
       "type": "float",
       "log": true,

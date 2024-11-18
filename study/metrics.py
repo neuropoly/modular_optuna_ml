@@ -47,7 +47,6 @@ def importance_by_permutation(manager: OptunaModelManager, x: BaseDataManager, y
     ))
     # Convert it to a string-formatted dictionary, in 'feature_name: feature_importance' form
     importance_vals = [f'{k}: {v}' for k, v in importance_vals.items()]
-    # Convert it to a quote string so the SQLite backend doesn't explode
+    # Convert it to a cleaned string so the SQLite backend doesn't explode
     importance_vals = str(importance_vals).replace("'", "").replace('"', '')
-    importance_vals = f"'{importance_vals}'"
     return importance_vals

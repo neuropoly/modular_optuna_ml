@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 from copy import copy as shallow_copy
+from types import NoneType
 from typing import Optional
 
 import numpy as np
@@ -180,15 +181,15 @@ class StudyManager(object):
                 # If the trial didn't have a value for the parameter, set it to null
                 if tv is None:
                     new_entry_components[k] = "NULL"
-                # If the associated value is non-numeric, format it to play nicely with SQLite's queries
-                elif not isinstance(v, dict):
-                    new_entry_components[k] = f"'{tv}'"
                 # For everything else, just leave it be
                 else:
                     new_entry_components[k] = tv
 
-        # Format them into clean strings so they play nice with the DB query formatting
-        ordered_values = [str(new_entry_components[k]) for k in self.db_order]
+        # Re-order the values so they can cleanly save into the dataset
+        ordered_values = [new_entry_components[k] for k in self.db_order]
+
+        # Format them as valid strings, so that SQL doesn't have a fit
+        ordered_values = [str(v) if isinstance(v, int | float | NoneType) else f"'{v}'" for v in ordered_values]
         new_entry = ", ".join(ordered_values)
 
         # Push the results to the db

@@ -46,12 +46,12 @@ def parse_tunable(key: str, params: dict | list | int | float | str):
                 step=params.get('step', 1),
                 log=params.get('log', False)
             )
-    # If it is a list, assume categorical by default
-    elif param_type is list:
-        return lambda t: t.suggest_categorical(
-            name=key,
-            choices=params
-        )
+        elif param_type == 'categorical':
+            choices=params.get('choices')
+            return lambda t: t.suggest_categorical(
+                name=key,
+                choices=choices
+            )
     # If it is anything else, treat it as a constant
     else:
         return lambda t: t.suggest_categorical(

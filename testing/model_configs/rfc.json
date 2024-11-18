@@ -2,7 +2,10 @@
   "label": "RandomForestClassifier",
   "model": "RFC",
   "parameters": {
-    "criterion": ["gini", "entropy", "log_loss"],
+    "criterion": {
+      "type": "categorical",
+      "choices": ["gini", "entropy", "log_loss"]
+    },
     "min_samples_split": {
       "type": "int",
       "low": 2,

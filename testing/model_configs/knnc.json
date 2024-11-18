@@ -2,7 +2,10 @@
   "label": "KNNC",
   "model": "KNNC",
   "parameters": {
-    "weights": ["uniform", "distance"],
+    "weights": {
+      "type": "categorical",
+      "choices": ["uniform", "distance"]
+    },
     "p": {
       "type": "float",
       "low": 1,

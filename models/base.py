@@ -75,29 +75,44 @@ class OptunaModelManager(Generic[T], ABC):
         for k, v in kwargs.items():
             self.trial_closures[k] = OptunaModelManager.optuna_trial_param_parser(k, v)
 
+    @abstractmethod
+    def get_model(self) -> T:
+        """
+        Returns current model instance managed by this manager, if one exists
+        """
+        ...
+
     def get_type(self):
         return self._type_T
 
     @abstractmethod
-    def build_model(self, trial: Trial) -> T:
+    def tune_model(self, trial: Trial):
         """
-        Build a corresponding model using parameters derived from an Optuna trial.
+        Tunes the model managed by this manages using parameters derived from an Optuna trial.
         :param trial: The Optuna trial to generate params from
-        :return: A model generated using the trial
         """
-        return None
+        ...
 
     @abstractmethod
-    def predict(self, model: T, x: np.ndarray) -> np.ndarray:
+    def fit(self, x: np.ndarray, y: np.ndarray):
+        """
+        Fit the model managed by this model manager to the data provided
+        :param x: The data features to fit
+        :param y: The data target to fit
+        """
+        ...
+
+    @abstractmethod
+    def predict(self, x: np.ndarray) -> np.ndarray:
         """
         Generate the predictions from a model of the type managed by this class
         :param model: The model to generate predictions from
         :param x: The data for said model to use to generate the predictions, in NP-array-like format
         :return: The generated predictions, in a np-like array
         """
-        pass
+        ...
 
-    def predict_proba(self, model: T, x: np.ndarray) -> np.ndarray:
+    def predict_proba(self, x: np.ndarray) -> np.ndarray:
         """
         Predict the (pseudo-) probability of each class the model has been tasked with. Optional implementation, as
         not all OptunaModelManagers manage categorical models

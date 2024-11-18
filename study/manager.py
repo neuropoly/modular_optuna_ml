@@ -268,38 +268,38 @@ class StudyManager(object):
             cross_splitter = StratifiedKFold(n_splits=self.study_config.no_crosses, random_state=seed, shuffle=True)
             objective_cross_values = np.zeros(self.study_config.no_crosses)
             for i, (ti, vi) in enumerate(cross_splitter.split(train_x.as_array(), train_y.as_array())):
+                # Tune the model based on the trial's parameters
+                model_manager.tune_model(trial)
 
                 # Split the components along the desired axes
                 tx, vx = prepped_x.split(ti, vi, is_cross=True)
                 ty, vy = train_y[ti], train_y[vi]
 
                 # Generate and fit a new instance of the model to the training subset
-                model = model_manager.build_model(trial)
                 rty = np.ravel(ty.as_array())
-                model.fit(tx.as_array(), rty)  # 'ravel' saves us a warning log
+                model_manager.fit(tx.as_array(), rty)  # 'ravel' saves us a warning log
 
                 # Calculate the objective metric for this function and store it
-                objective_cross_values[i] = self.objective_func(model_manager, model, vx, vy)
+                objective_cross_values[i] = self.objective_func(model_manager, vx, vy)
 
                 # Calculate the metrics requested by the user at the "train" hook
                 for k, v in self.train_hooks.items():
-                    metric_vals[f"{k} [{i}]"] = v(model_manager, model, tx, ty)
+                    metric_vals[f"{k} [{i}]"] = v(model_manager, tx, ty)
 
             # Generate and fit the model to the full training set
-            model = model_manager.build_model(trial)
             train_y_flat = np.ravel(train_y.as_array()) # Ravel prevents a warning log
-            model.fit(prepped_x.as_array(), train_y_flat)
+            model_manager.fit(prepped_x.as_array(), train_y_flat)
 
             # Calculate the objective function's value on the test set as well
             objective_value = np.mean(objective_cross_values)
 
             # Calculate and record any validation metrics
             for k, metric_func in self.validate_hooks.items():
-                metric_vals[k] = metric_func(self.model_config.model_manager, model, prepped_x, train_y)
+                metric_vals[k] = metric_func(self.model_config.model_manager, prepped_x, train_y)
 
             # Calculate any metrics requested by the user, including the objective function
             for k, metric_func in self.test_hooks.items():
-                metric_vals[k] = metric_func(self.model_config.model_manager, model, test_x, test_y)
+                metric_vals[k] = metric_func(self.model_config.model_manager, test_x, test_y)
 
             # Save the metric values to the DB
             self.save_results(rep, trial, objective_value, metric_vals)

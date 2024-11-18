@@ -12,7 +12,7 @@ class LogisticRegressionManager(SciKitLearnModelManager[LogisticRegression]):
     """
     Optuna model manager for the LogisticRegression class in SciKit-Learn
     """
-    def build_model(self, trial: Trial):
+    def tune_model(self, trial: Trial):
         # Get the solver to use for this model
         solver = self.trial_closures['solver'](trial)
 
@@ -21,15 +21,15 @@ class LogisticRegressionManager(SciKitLearnModelManager[LogisticRegression]):
 
         # If the penalty is none, just return the model without further params
         if penalty is None:
-            return LogisticRegression(penalty=penalty, solver=solver)
+            self._model = LogisticRegression(penalty=penalty, solver=solver)
         # If the penalty is l1 or l2, assign the C of the model to the respective value
         elif penalty == 'l1':
             l1_c = self.trial_closures['l1_c'](trial)
-            return LogisticRegression(penalty=penalty, C=l1_c, solver=solver)
+            self._model = LogisticRegression(penalty=penalty, C=l1_c, solver=solver)
         # If the penalty is l1, use the corresponding weight param
         elif penalty == 'l2':
             l2_c = self.trial_closures['l2_c'](trial)
-            return LogisticRegression(penalty=penalty, C=l2_c, solver=solver)
+            self._model = LogisticRegression(penalty=penalty, C=l2_c, solver=solver)
         # ElasticNet needs a bit more management to convert the pair of l1 and l2 C values
         elif penalty == 'elasticnet':
             # Get the respective C values
@@ -40,11 +40,11 @@ class LogisticRegressionManager(SciKitLearnModelManager[LogisticRegression]):
             # ... and use it to calculate the effective C value
             c = l1_c / l1_ratio
             # Return the resulting model
-            return LogisticRegression(penalty=penalty, C=c, l1_ratio=l1_ratio, solver=solver)
-
-        # If the above checks fail, raise an error
-        raise ValueError(
-            "Invalid penalty term used for LogisticRegression!\n",
-            "Please make sure all values for the 'penalty' value in your ML config are one of the following:",
-            "['l1', 'l2', 'elasticnet', null]"
-        )
+            self._model = LogisticRegression(penalty=penalty, C=c, l1_ratio=l1_ratio, solver=solver)
+        else:
+            # If the above checks fail, raise an error
+            raise ValueError(
+                "Invalid penalty term used for LogisticRegression!\n",
+                "Please make sure all values for the 'penalty' value in your ML config are one of the following:",
+                "['l1', 'l2', 'elasticnet', null]"
+            )

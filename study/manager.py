@@ -1,7 +1,7 @@
 import logging
 import sqlite3
-from typing import Optional
 from copy import copy as shallow_copy
+from typing import Optional
 
 import numpy as np
 import optuna
@@ -269,7 +269,7 @@ class StudyManager(object):
             objective_cross_values = np.zeros(self.study_config.no_crosses)
             for i, (ti, vi) in enumerate(cross_splitter.split(train_x.as_array(), train_y.as_array())):
                 # Tune the model based on the trial's parameters
-                model_manager.tune_model(trial)
+                model_manager.tune(trial)
 
                 # Split the components along the desired axes
                 tx, vx = prepped_x.split(ti, vi, is_cross=True)

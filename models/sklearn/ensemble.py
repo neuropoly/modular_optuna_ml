@@ -11,7 +11,7 @@ class AdaBoostClassifierManager(SciKitLearnModelManager[AdaBoostClassifier]):
     """
     Optuna model manager for the AdaBoostClassifier class in SciKit-Learn
     """
-    def tune_model(self, trial: Trial):
+    def tune(self, trial: Trial):
         # Get the number of neighbors which should be used
         n_estimators = self.trial_closures['n_estimators'](trial)
 

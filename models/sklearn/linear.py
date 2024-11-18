@@ -12,7 +12,7 @@ class LogisticRegressionManager(SciKitLearnModelManager[LogisticRegression]):
     """
     Optuna model manager for the LogisticRegression class in SciKit-Learn
     """
-    def tune_model(self, trial: Trial):
+    def tune(self, trial: Trial):
         # Get the solver to use for this model
         solver = self.trial_closures['solver'](trial)
 

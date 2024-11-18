@@ -14,7 +14,7 @@ class SVCManager(SciKitLearnModelManager[SVC]):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def tune_model(self, trial: Trial):
+    def tune(self, trial: Trial):
         # Get the kernel for this trial
         kernel = self.trial_closures['kernel'](trial)
 

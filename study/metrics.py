@@ -1,15 +1,13 @@
 """
 Metric-reporting closures for use in this framework.
 """
-from typing import TypeVar
-
-from sklearn.metrics import balanced_accuracy_score, log_loss, roc_auc_score
+import numpy as np
 from sklearn.inspection import permutation_importance
+from sklearn.metrics import balanced_accuracy_score, log_loss, roc_auc_score
 
 from data import BaseDataManager
+from data.mixins import MultiFeatureMixin
 from models.base import OptunaModelManager
-
-T = TypeVar('T')
 
 """ Supervised """
 def sk_log_loss(manager: OptunaModelManager, model, x: BaseDataManager, y: BaseDataManager):
@@ -32,8 +30,24 @@ def sk_roc_auc(manager: OptunaModelManager, model, x: BaseDataManager, y: BaseDa
 
 """ Feature Importance """
 def importance_by_permutation(manager: OptunaModelManager, model, x: BaseDataManager, y: BaseDataManager):
+    # Sanity check that the user is requesting this on a data manager with multiple features
+    if not issubclass(type(x), MultiFeatureMixin):
+        # TODO: Move this check to pre-run, so it will fail before any (potentially slow) analyses are run
+        raise TypeError(
+            f"DataManager of type '{type(x).__name__}' only has one feature, feature importance is irrelevant"
+        )
+    x: BaseDataManager | MultiFeatureMixin
     # Get the mean importance values
-    ret_val = permutation_importance(model, x.as_array(), y.as_array()).importances_mean
+    importance_vals = permutation_importance(model, x.as_array(), y.as_array()).importances_mean
+    # Pair them with their feature labels
+    importance_vals = {k: importance_vals[i] for i, k in enumerate(x.features())}
+    # Sort the results from most to least ABSOLUTE importance. TODO: Make this configurable
+    importance_vals = dict(sorted(
+        importance_vals.items(), key=lambda v: np.abs(v[1]), reverse=True
+    ))
+    # Convert it to a string-formatted dictionary, in 'feature_name: feature_importance' form
+    importance_vals = [f'{k}: {v}' for k, v in importance_vals.items()]
     # Convert it to a quote string so the SQLite backend doesn't explode
-    ret_val = f"'{ret_val}'"
-    return ret_val
+    importance_vals = str(importance_vals).replace("'", "").replace('"', '')
+    importance_vals = f"'{importance_vals}'"
+    return importance_vals

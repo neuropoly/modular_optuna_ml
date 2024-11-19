@@ -210,7 +210,9 @@ class StudyManager(object):
         skf_splitter = StratifiedKFold(n_splits=self.study_config.no_replicates, random_state=init_seed, shuffle=True)
 
         # Isolate the target column(s) from the dataset
-        if isinstance(data_manager, MultiFeatureMixin):
+        if self.study_config.target is not None:
+            if not isinstance(data_manager, MultiFeatureMixin):
+                raise TypeError("Tried to target a feature in a dataset which only has a single feature!")
             x = data_manager.get_features([c for c in data_manager.features() if c != self.study_config.target])
             y = data_manager.get_features(self.study_config.target)
             # Why is PyCharm's type hinting so dogshit?

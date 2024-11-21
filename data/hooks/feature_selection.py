@@ -10,7 +10,7 @@ from sklearn.decomposition import PCA
 from config.utils import default_as, is_float, is_list, parse_data_config_entry
 from data.base import BaseDataManager
 from data.hooks import registered_data_hook
-from data.hooks.base import StatelessHook, FittedHook
+from data.hooks.base import FittedHook, StatelessHook
 from data.mixins import MultiFeatureMixin
 from tuning.utils import Tunable, parse_tunable
 
@@ -98,10 +98,11 @@ class FeatureNullityDrop(NullityDrop):
 class PrincipalComponentAnalysis(Tunable, FittedHook):
     def __init__(self, config: dict, **kwargs):
         super().__init__(config=config, **kwargs)
+        super(FittedHook, self).__init__(config=config, **kwargs)
 
         # Grab the proportion of features to select; defaults to 70%
         select_prop = config.get("proportion", 0.7)
-        self.prop_tuner = parse_tunable("proportion", select_prop)
+        self.prop_tuner = parse_tunable("pca_proportion", select_prop)
 
         # Keep tabs on a backing instance for later user
         self.backing_pca: PCA | None = None
@@ -115,6 +116,9 @@ class PrincipalComponentAnalysis(Tunable, FittedHook):
         new_prop = self.prop_tuner(trial)
         # Generate the new backing model based on this setup
         self.backing_pca = PCA(n_components=new_prop)
+
+    def tuned_params(self) -> list[str]:
+        return ["pca_proportion"]
 
     def run(self, train_in: BaseDataManager, test_in: BaseDataManager = None):
         if isinstance(train_in, MultiFeatureMixin):

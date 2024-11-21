@@ -1,18 +1,26 @@
 from abc import ABC, abstractmethod
+from typing import Iterable
 
 from optuna import Trial
 
 
 class Tunable(ABC):
     """
-    Simple mixing which denotes that an object can be tuned via an Optuna Study using
+    Simple mixin which denotes that an object can be tuned via an Optuna Study using
     parameters derived from an Optuna Trial.
     """
+    def __init__(self, **kwargs):
+        self._label = ""
+
     @abstractmethod
     def tune(self, trial: Trial):
         """
         Updates the state of this object using parameters from an Optuna trial
         """
+        ...
+
+    @abstractmethod
+    def tuned_params(self) -> Iterable[str]:
         ...
 
 def parse_tunable(key: str, params: dict | list | int | float | str):

@@ -25,7 +25,7 @@ class RandomForestClassifierManager(SciKitLearnModelManager[RandomForestClassifi
     """
     Optuna model manager for the RandomForestClassifier class in SciKit-Learn
     """
-    def tune_model(self, trial: Trial):
+    def tune(self, trial: Trial):
         # Get the criterion to use decision tree splits
         criterion = self.trial_closures['criterion'](trial)
 

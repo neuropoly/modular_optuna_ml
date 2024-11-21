@@ -23,6 +23,7 @@ class OptunaModelManager(Tunable, Generic[T], ABC):
                 cls._type_T = orig_bases[0]
 
     def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         # By default, just parse all key-word arguments into a 'trial_closures' parameter to manage later
         self.trial_closures = {}
         for k, v in kwargs.items():

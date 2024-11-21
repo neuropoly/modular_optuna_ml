@@ -101,9 +101,10 @@ class StudyManager(object):
     def non_param_cols(self):
         return [
             *UNIVERSAL_DB_KEYS,
+            *self.data_config.data_manager.tuned_params(),
             *self.train_metric_cols(),
             *self.validate_hooks.keys(),
-            *self.test_hooks.keys(),
+            *self.test_hooks.keys()
         ]
 
     """ DB Management """
@@ -139,15 +140,17 @@ class StudyManager(object):
                 # Add them back to the
                 for k, v in self.model_config.parameters.items():
                     # Everything that is not a dictionary defining how it's should be samples must be text-like
+                    new_col = None
                     if not isinstance(v, dict):
-                        col_vals.append(f"{k} TEXT")
+                        new_col = f"{k} TEXT"
                     # If it is a dict, pull the type and check against it instead
                     elif v.get("type") == "float":
-                        col_vals.append(f"{k} REAL")
+                        new_col = f"{k} REAL"
                     elif v.get("type") == "int":
-                        col_vals.append(f"{k} INTEGER")
+                        new_col = f"{k} INTEGER"
                     else:
-                        col_vals.append(f"{k} TEXT")
+                        new_col = f"{k} TEXT"
+                    col_vals.append(new_col)
 
             # Create the table for this study
             try:
@@ -165,14 +168,20 @@ class StudyManager(object):
             # Return the result
             return con, cur
 
-    def save_results(self, replicate_n, trial, objective_val, metrics):
+    def save_results(self, replicate_n, trial: optuna.Trial, objective_val, metrics):
         # Generate the list of values to be saved to the DB
         new_entry_components = shallow_copy(metrics)
+
+        # Extend the dict with our universal metrics
         new_entry_components.update({
             "replicate": replicate_n,
             "trial": trial.number,
             "objective": objective_val
         })
+
+        # Extend the dict with our tunable-parameters
+        for p in self.data_config.data_manager.tuned_params():
+            new_entry_components[p] = trial.params.get(p)
 
         # If the user wants model parameters saved, add them too
         if self.study_config.track_params:

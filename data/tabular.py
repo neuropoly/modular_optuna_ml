@@ -122,6 +122,12 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         for hook in self.tunable_hooks:
             hook.tune(trial)
 
+    def tuned_params(self) -> Iterable[str]:
+        tunable_hook_params = []
+        for hook in self.tunable_hooks:
+            tunable_hook_params.append(hook.tuned_params())
+        return chain(*tunable_hook_params)
+
     def get_samples(self, idx) -> Self:
         sub_df = self.data.iloc[idx, :]
         if isinstance(sub_df, pd.Series):

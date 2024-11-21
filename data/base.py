@@ -4,9 +4,11 @@ from typing import Self, Sequence, Type
 
 import numpy as np
 
+from tuning.utils import Tunable
+
 
 # Denotes the type of data this class manages (float, filepaths etc.)
-class BaseDataManager(Sequence, ABC):
+class BaseDataManager(Sequence, Tunable, ABC):
     """
     Base data manager class; you should subclass this and extend it with mixins to implement functionality!
     """

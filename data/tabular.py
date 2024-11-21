@@ -1,15 +1,18 @@
+from itertools import chain
 from logging import Logger
 from pathlib import Path
 from typing import Iterable, Optional, Self
 
 import numpy as np
 import pandas as pd
+from optuna import Trial
 
 from config.utils import as_str, default_as, is_file, is_list, parse_data_config_entry
 from data.base import BaseDataManager, registered_datamanager
 from data.hooks import DATA_HOOKS
 from data.hooks.base import BaseDataHook, FittedHook, StatelessHook
 from data.mixins import MultiFeatureMixin
+from tuning.utils import Tunable
 
 
 @registered_datamanager("tabular")
@@ -30,6 +33,7 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         # Hook storing variables for later
         self.pre_split_hooks: list[BaseDataHook] = []
         self.post_split_hooks: list[BaseDataHook] = []
+        self.tunable_hooks: list[Tunable | BaseDataHook] = []
 
     def __len__(self):
         return self.data.shape[0]
@@ -68,14 +72,20 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
             # Interpret the configuration file for this hook to ensure its a valid type
             hook_label = hook_config.pop('type')
             hook_cls = DATA_HOOKS.get(hook_label, None)
+            # If no hook of the type queried was found, raise an error and return
             if hook_cls is None:
                 raise ValueError(f"Could not find a registered data hook of type '{hook_label}'; terminating.")
+
+            # If the hook was not stateless, warn the user
             if not issubclass(hook_cls, StatelessHook):
                 logger.warning(f"Pre-split hook '{hook_cls.__name__}' is not stateless; "
                                f"this is likely to result in data overfitting! Are you sure this was intended?")
 
             # Attempt to instantiate the hook type based on the configs contents
-            new_instance.pre_split_hooks.append(hook_cls.from_config(config=hook_config, logger=logger))
+            new_hook = hook_cls.from_config(config=hook_config, logger=logger)
+
+            # Save the results
+            new_instance.pre_split_hooks.append(new_hook)
 
         # Retrieve and parse the post-split data hooks
         post_split_hooks = parse_data_config_entry(
@@ -84,14 +94,33 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         for hook_config in post_split_hooks:
             hook_label = hook_config.pop('type')
             hook_cls = DATA_HOOKS.get(hook_label, None)
+
+            # If no hook of the type queried was found, raise an error and return
             if hook_cls is None:
                 raise ValueError(f"Could not find data hook of type '{hook_label}'; terminating.")
+
+            # If the hook was not stateless, warn the user
             if not issubclass(hook_cls, FittedHook):
                 logger.warning(f"Post-split hook '{hook_cls.__name__}' is not fitted; "
                                f"are you sure you wanted to run it post-split?")
-            new_instance.post_split_hooks.append(hook_cls.from_config(config=hook_config, logger=logger))
+
+            # Attempt to instantiate the hook type based on the configs contents
+            new_hook = hook_cls.from_config(config=hook_config, logger=logger)
+
+            # Save the results
+            new_instance.post_split_hooks.append(new_hook)
+
+        # Identify any hooks which can be tuned, so they can be tuned upon request
+        for h in chain(new_instance.pre_split_hooks, new_instance.post_split_hooks):
+            if isinstance(h, Tunable):
+                new_instance.tunable_hooks.append(h)
 
         return new_instance
+
+    def tune(self, trial: Trial):
+        # Tune any tunable hooks managed by this class
+        for hook in self.tunable_hooks:
+            hook.tune(trial)
 
     def get_samples(self, idx) -> Self:
         sub_df = self.data.iloc[idx, :]
@@ -193,5 +222,6 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         new_instance._sep = self._sep
         new_instance.pre_split_hooks = self.pre_split_hooks
         new_instance.post_split_hooks = self.post_split_hooks
+        new_instance.tunable_hooks = self.tunable_hooks
 
         return new_instance

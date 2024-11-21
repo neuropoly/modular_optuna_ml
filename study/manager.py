@@ -196,18 +196,31 @@ class StudyManager(object):
         self.db_cursor.execute(f"INSERT INTO {self.study_label} VALUES ({new_entry})")
         self.db_connection.commit()
 
-    """ ML Management """
+    """ Management """
     def run(self):
+        init_seed, replicate_seeds, x, y = self.prepare_run()
+
+        # Run the study once for each replicate
+        skf_splitter = StratifiedKFold(n_splits=self.study_config.no_replicates, random_state=init_seed, shuffle=True)
+        for i, (train_idx, test_idx) in enumerate(skf_splitter.split(x.as_array(), y.as_array())):
+            # Set up the workspace for this replicate
+            s = int(replicate_seeds[i])
+            np.random.seed(s)
+
+            # If debugging, report the sizes
+            self.logger.debug(f"Test/Train ratio (split {i}): {len(test_idx)}/{len(train_idx)}")
+
+            # Run a sub-study using this data
+            self.run_replicate(i, train_idx, test_idx, x, y, s)
+
+    def prepare_run(self):
         # Control for RNG before proceeding
         init_seed = self.study_config.random_seed
         np.random.seed(init_seed)
-
         # Get the DataManager from the config
         data_manager = self.data_config.data_manager
-
         # Generate the requested number of splits, so each replicate will have a unique validation group
         replicate_seeds = np.random.randint(0, np.iinfo(np.int32).max, size=self.study_config.no_replicates)
-        skf_splitter = StratifiedKFold(n_splits=self.study_config.no_replicates, random_state=init_seed, shuffle=True)
 
         # Isolate the target column(s) from the dataset
         if self.study_config.target is not None:
@@ -221,91 +234,65 @@ class StudyManager(object):
         else:
             raise NotImplementedError("Unsupervised analyses are not currently supported")
 
-        # Process the dataset with any operations that should be done pre-split
-        x = x.pre_split(is_cross=False)
-
         # Initiate the DB and create a table within it for the study's results
         self.db_connection, self.db_cursor = self.init_db()
+        return init_seed, replicate_seeds, x, y
 
-        # Run the study once for each replicate
-        for i, (train_idx, test_idx) in enumerate(skf_splitter.split(x.as_array(), y.as_array())):
-            # Set up the workspace for this replicate
-            s = int(replicate_seeds[i])
-            np.random.seed(s)
+    @staticmethod
+    def train_test_split(test_idx, train_idx, x, y):
+        # Split the data using the indices provided
+        train_x, test_x = x.split(train_idx, test_idx, is_cross=False)
+        # Naive split is required here to avoid running post-split processing
+        train_y, test_y = y[train_idx], y[test_idx]
+        return test_x, test_y, train_x, train_y
 
-            # If debugging, report the sizes
-            self.logger.debug(f"Test/Train ratio (split {i}): {len(test_idx)}/{len(train_idx)}")
-
-            # Split the data using the indices provided
-            train_x, test_x = x.split(train_idx, test_idx, is_cross=False)
-            # Naive split is required here to avoid running post-split processing
-            train_y, test_y = y[train_idx], y[test_idx]
-
-            # Run a sub-study using this data
-            self.run_supervised(i, train_x, train_y, test_x, test_y, s)
-
-    def run_supervised(
+    def run_replicate(
             self,
             rep: int,
-            train_x: BaseDataManager,
-            train_y: BaseDataManager,
-            test_x: BaseDataManager,
-            test_y: BaseDataManager,
+            train_idx,
+            test_idx,
+            x,
+            y,
             seed: int
     ):
-        # Generate the study name for this run
+        # Generate the name for this run
         study_name = f"{self.study_label} [{rep}]"
 
-        # Run the model specified by the model config on the data
+        # Grab the model manager specified by the model config
         model_manager = self.model_config.model_manager
 
         # Define the function which will utilize a trial's parameters to generate models to-be-tested
         def opt_func(trial: optuna.Trial):
             # Initiate a dictionary to track all metrics requested to be recorded by the user
-            metric_vals = dict()
+            metric_dict = dict()
 
-            # Re-run any preprocessing the user has requested on the training subset
-            prepped_x = train_x.pre_split(is_cross=True)
+            # Tune the data and model managers
+            model_manager.tune(trial)
+            x.tune(trial)
+
+            # Run any pre-split pre-processing
+            prepped_x = x.pre_split(is_cross=False)
+
+            # Split the data into the composite components
+            test_x, test_y, train_x, train_y = self.train_test_split(test_idx, train_idx, prepped_x, y)
 
             # Run a subset analysis on the training data, split once for each cross requested
-            cross_splitter = StratifiedKFold(n_splits=self.study_config.no_crosses, random_state=seed, shuffle=True)
-            objective_cross_values = np.zeros(self.study_config.no_crosses)
-            for i, (ti, vi) in enumerate(cross_splitter.split(train_x.as_array(), train_y.as_array())):
-                # Tune the model based on the trial's parameters
-                model_manager.tune(trial)
+            objective_value = self.run_cv_trial(train_x, train_y, trial, metric_dict)
 
-                # Split the components along the desired axes
-                tx, vx = prepped_x.split(ti, vi, is_cross=True)
-                ty, vy = train_y[ti], train_y[vi]
-
-                # Generate and fit a new instance of the model to the training subset
-                rty = np.ravel(ty.as_array())
-                model_manager.fit(tx.as_array(), rty)  # 'ravel' saves us a warning log
-
-                # Calculate the objective metric for this function and store it
-                objective_cross_values[i] = self.objective_func(model_manager, vx, vy)
-
-                # Calculate the metrics requested by the user at the "train" hook
-                for k, v in self.train_hooks.items():
-                    metric_vals[f"{k} [{i}]"] = v(model_manager, tx, ty)
-
-            # Generate and fit the model to the full training set
+            # Generate and fit a model to the full dataset with the current replicate
             train_y_flat = np.ravel(train_y.as_array()) # Ravel prevents a warning log
-            model_manager.fit(prepped_x.as_array(), train_y_flat)
-
-            # Calculate the objective function's value on the test set as well
-            objective_value = np.mean(objective_cross_values)
+            model_manager.fit(train_x.as_array(), train_y_flat)
 
             # Calculate and record any validation metrics
             for k, metric_func in self.validate_hooks.items():
-                metric_vals[k] = metric_func(self.model_config.model_manager, prepped_x, train_y)
+                metric_dict[k] = metric_func(model_manager, train_x, train_y)
 
             # Calculate any metrics requested by the user, including the objective function
             for k, metric_func in self.test_hooks.items():
-                metric_vals[k] = metric_func(self.model_config.model_manager, test_x, test_y)
+                metric_dict[k] = metric_func(model_manager, test_x, test_y)
 
             # Save the metric values to the DB
-            self.save_results(rep, trial, objective_value, metric_vals)
+            self.save_results(rep, trial, objective_value, metric_dict)
 
             # Return the objective function so Optuna can run optimization based on it
             return objective_value
@@ -317,3 +304,37 @@ class StudyManager(object):
             sampler=sampler
         )
         study.optimize(opt_func, n_trials=self.study_config.no_trials)
+
+    def run_cv_trial(self, x, y, trial, metric_dict):
+        # Grab the model manager for the model we want to test
+        model_manager = self.model_config.model_manager
+
+        # Run any pre-split preparations the dataset has again
+        prepped_x = x.pre_split(is_cross=True)
+
+        # Track the objective values for each cross
+        objective_cross_values = np.zeros(self.study_config.no_crosses)
+
+        cross_splitter = StratifiedKFold(
+            n_splits=self.study_config.no_crosses, random_state=self.study_config.random_seed, shuffle=True
+        )
+        for i, (ti, vi) in enumerate(cross_splitter.split(x.as_array(), y.as_array())):
+            # Tune the model based on the trial's parameters
+            model_manager.tune(trial)
+
+            # Split the components along the desired axes
+            tx, vx = prepped_x.split(ti, vi, is_cross=True)
+            ty, vy = y[ti], y[vi]
+
+            # Generate and fit a new instance of the model to the training subset
+            rty = np.ravel(ty.as_array())
+            model_manager.fit(tx.as_array(), rty)  # 'ravel' saves us a warning log
+
+            # Calculate the objective metric for this function and store it
+            objective_cross_values[i] = self.objective_func(model_manager, vx, vy)
+
+            # Calculate the metrics requested by the user at the "train" hook
+            for k, v in self.train_hooks.items():
+                metric_dict[f"{k} [{i}]"] = v(model_manager, tx, ty)
+
+        return np.mean(objective_cross_values)

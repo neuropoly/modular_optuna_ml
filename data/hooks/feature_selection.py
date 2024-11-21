@@ -4,12 +4,15 @@ from typing import Self
 
 import numpy as np
 import pandas as pd
+from optuna import Trial
+from sklearn.decomposition import PCA
 
 from config.utils import default_as, is_float, is_list, parse_data_config_entry
 from data.base import BaseDataManager
 from data.hooks import registered_data_hook
-from data.hooks.base import StatelessHook
+from data.hooks.base import StatelessHook, FittedHook
 from data.mixins import MultiFeatureMixin
+from tuning.utils import Tunable, parse_tunable
 
 
 ### Explicit Feature Selection ###
@@ -88,3 +91,53 @@ class FeatureNullityDrop(NullityDrop):
         drop_idx = [k for k in data_in.features()
                    if np.sum(pd.isnull(data_in.get_features(k).as_array())) > null_tolerance]
         return data_in.drop_features(drop_idx)
+
+
+### Principal Component Analysis ###
+@registered_data_hook("principal_component_analysis")
+class PrincipalComponentAnalysis(Tunable, FittedHook):
+    def __init__(self, config: dict, **kwargs):
+        super().__init__(config=config, **kwargs)
+
+        # Grab the proportion of features to select; defaults to 70%
+        select_prop = config.get("proportion", 0.7)
+        self.prop_tuner = parse_tunable("proportion", select_prop)
+
+        # Keep tabs on a backing instance for later user
+        self.backing_pca: PCA | None = None
+
+
+    @classmethod
+    def from_config(cls, config: dict, logger: Logger = Logger.root) -> Self:
+        return cls(config=config, logger=logger)
+
+    def tune(self, trial: Trial):
+        new_prop = self.prop_tuner(trial)
+        # Generate the new backing model based on this setup
+        self.backing_pca = PCA(n_components=new_prop)
+
+    def run(self, train_in: BaseDataManager, test_in: BaseDataManager = None):
+        if isinstance(train_in, MultiFeatureMixin):
+            # Denote the type of our inputs so type hinting doesn't suck
+            train_in: MultiFeatureMixin | BaseDataManager
+            test_in: MultiFeatureMixin | BaseDataManager
+
+            # Calculate and regenerate the features in the training set
+            tmp_train = self.backing_pca.fit_transform(train_in.as_array())
+            feature_labels = [f'PC{i}' for i in range(tmp_train.shape[1])]
+
+            # Drop all features and replace them with the new components
+            train_out = train_in.drop_features(train_in.features())
+            train_out = train_out.set_features(feature_labels, tmp_train)
+
+            # Do the same to our testing data, but without re-fitting
+            tmp_test = self.backing_pca.transform(test_in.as_array())
+            test_out = test_in.drop_features(test_in.features())
+            test_out = test_out.set_features(feature_labels, tmp_test)
+
+        # Otherwise, just fit and transform everything
+        # TODO: Implement a method of converting back to the original DataManager type
+        else:
+            train_out = self.backing_pca.fit_transform(train_in.as_array())
+            test_out = self.backing_pca.fit_transform(test_in.as_array())
+        return train_out, test_out

@@ -12,15 +12,13 @@ class KNeighborsClassifierManager(SciKitLearnModelManager[KNeighborsClassifier])
     """
     Optuna model manager for the KNeighborsClassifier class in SciKit-Learn
     """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def tune(self, trial: Trial):
-        # Get the number of neighbors which should be used
-        n_neighbors = self.trial_closures['n_neighbors'](trial)
+        # Tune this
+        super().tune(trial)
 
-        # Get the weighting scheme to use for this model
-        weights = self.trial_closures['weights'](trial)
-
-        # Get the p value for this trial
-        p = self.trial_closures['p'](trial)
-
-        # Return the resulting model
-        self._model = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, p=p)
+        # Rebuild the model using the newly tuned parameters
+        model_kwargs = {k: self.evaluate_param(k) for k in self.params.keys()}
+        self._model = KNeighborsClassifier(**model_kwargs)

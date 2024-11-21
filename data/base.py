@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
+from itertools import chain
 from logging import Logger
-from typing import Self, Sequence, Type
+from typing import Iterable, Self, Sequence, Type
 
 import numpy as np
+from optuna import Trial
 
-from tuning.utils import Tunable
+from tuning.utils import Tunable, TunableParam
 
 
 # Denotes the type of data this class manages (float, filepaths etc.)
@@ -12,6 +14,23 @@ class BaseDataManager(Sequence, Tunable, ABC):
     """
     Base data manager class; you should subclass this and extend it with mixins to implement functionality!
     """
+    def __init__(self, logger: Logger = Logger.root, **kwargs):
+        super().__init__(**kwargs)
+
+        # Track the logger for this object
+        self.logger = logger
+
+        # Keep tabs on the list of tunable parameters
+        self.tunable_hooks: list[Tunable] = []
+
+    def tune(self, trial: Trial):
+        for h in self.tunable_hooks:
+            h.tune(trial)
+
+    def tunable_params(self) -> Iterable[TunableParam]:
+        new_vals = [x.tunable_params() for x in self.tunable_hooks]
+        return chain(*new_vals)
+
     @classmethod
     @abstractmethod
     def from_config(cls, config: dict) -> Self:

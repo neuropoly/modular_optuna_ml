@@ -22,9 +22,9 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
 
     Uses a Panda's dataframe as a backend to read the files and manage the majority of data queries and modifications.
     """
-    def __init__(self, logger: Logger = Logger.root):
-        # Use 'from_config' below, rather than using this constructor directly
-        self.logger = logger
+    def __init__(self, **kwargs):
+        # Don't use this constructor directly; use 'from_config' instead
+        super().__init__(**kwargs)
 
         # Default parameters
         self._data: Optional[pd.DataFrame] = None
@@ -116,17 +116,6 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
                 new_instance.tunable_hooks.append(h)
 
         return new_instance
-
-    def tune(self, trial: Trial):
-        # Tune any tunable hooks managed by this class
-        for hook in self.tunable_hooks:
-            hook.tune(trial)
-
-    def tuned_params(self) -> Iterable[str]:
-        tunable_hook_params = []
-        for hook in self.tunable_hooks:
-            tunable_hook_params.append(hook.tuned_params())
-        return chain(*tunable_hook_params)
 
     def get_samples(self, idx) -> Self:
         sub_df = self.data.iloc[idx, :]

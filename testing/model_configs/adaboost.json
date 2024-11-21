@@ -3,11 +3,13 @@
   "model": "AdaBoostClassifier",
   "parameters": {
     "n_estimators": {
+      "label": "ada_n_estimators",
       "type": "int",
       "low": 10,
       "high": 100
     },
     "learning_rate": {
+      "label": "ada_learning_rate",
       "type": "float",
       "log": true,
       "low": 1e-3,

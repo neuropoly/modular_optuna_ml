@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Any, Generic, Iterable, TypeVar
 
 import numpy as np
+from optuna import Trial
 
-from tuning.utils import Tunable, parse_tunable
+from tuning.utils import Tunable, TunableParam
 
 T = TypeVar('T')
 
@@ -12,22 +13,18 @@ class OptunaModelManager(Tunable, Generic[T], ABC):
     An abstract class which should be subclassed and implemented for all machine learning models which want automated
     hyperparameter tuning within this framework.
     """
-    _type_T: type[T]
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        # Check if this is a properly instantiated class w/ a declared generic type
-        if orig_bases := cls.__dict__.get('__orig_bases__', False):
-            # If it is, and there is a type declared, track it; ignore the warnings, PyCharm is just being stupid here
-            if len(orig_bases) > 0:
-                cls._type_T = orig_bases[0]
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # By default, just parse all key-word arguments into a 'trial_closures' parameter to manage later
-        self.trial_closures = {}
+        # By default, just parse all key-word arguments into a 'params' dict to manage later
+        self.params: dict[str, Any] = {}
+        self._tunable_params: list[TunableParam] = []
         for k, v in kwargs.items():
-            self.trial_closures[k] = parse_tunable(k, v)
+            if isinstance(v, dict):
+                new_param = TunableParam.from_config_entry(v)
+                self.params[k] = new_param
+                self._tunable_params.append(new_param)
+            else:
+                self.params[k] = v
 
     @abstractmethod
     def get_model(self) -> T:
@@ -35,9 +32,6 @@ class OptunaModelManager(Tunable, Generic[T], ABC):
         Returns current model instance managed by this manager, if one exists
         """
         ...
-
-    def get_type(self):
-        return self._type_T
 
     @abstractmethod
     def fit(self, x: np.ndarray, y: np.ndarray):
@@ -47,6 +41,13 @@ class OptunaModelManager(Tunable, Generic[T], ABC):
         :param y: The data target to fit
         """
         ...
+
+    def evaluate_param(self, key: str):
+        param = self.params[key]
+        if isinstance(param, TunableParam):
+            return param.value
+        else:
+            return param
 
     @abstractmethod
     def predict(self, x: np.ndarray) -> np.ndarray:
@@ -67,3 +68,12 @@ class OptunaModelManager(Tunable, Generic[T], ABC):
         :return: The generated probability estimates
         """
         raise NotImplementedError(f"'{type(self)}' has not implemented the 'predict_proba' function")
+
+    def tune(self, trial: Trial):
+        # Tune all tunable parameters
+        for p in self.tunable_params():
+            p.tune(trial)
+
+    def tunable_params(self) -> Iterable[TunableParam]:
+        # By default, just report the labels for all tracked tunable params
+        return self._tunable_params

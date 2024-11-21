@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Iterable, TypeVar
+from typing import TypeVar
 
 import numpy as np
 
@@ -34,7 +34,3 @@ class SciKitLearnModelManager(OptunaModelManager[T], ABC):
         Use SciKit-Learn's standardized 'predict_proba' function by default
         """
         return self.get_model().predict_proba(x)
-
-    def tuned_params(self) -> Iterable[str]:
-        # TODO: Delete this placeholder once refactoring is completed
-        return []

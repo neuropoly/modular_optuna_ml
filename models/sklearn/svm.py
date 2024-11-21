@@ -15,16 +15,12 @@ class SVCManager(SciKitLearnModelManager[SVC]):
         super().__init__(**kwargs)
 
     def tune(self, trial: Trial):
-        # Get the kernel for this trial
-        kernel = self.trial_closures['kernel'](trial)
+        # Tune this model based on the trial parameters
+        super().tune(trial)
 
-        # Get the C value for this trial
-        c = self.trial_closures['c'](trial)
-
-        # Return the resulting model
-        self._model = SVC(C=c, kernel=kernel, probability=True)
-
-        # TODO: Extend this with more parameters
+        # Rebuild the model using the newly tuned parameters
+        model_kwargs = {k: self.evaluate_param(k) for k in self.params.keys()}
+        self._model = SVC(**model_kwargs, probability=True)
 
     def predict_proba(self, x):
         if self._model.probability:

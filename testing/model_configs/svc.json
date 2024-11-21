@@ -3,10 +3,12 @@
   "model": "SVC",
   "parameters": {
     "kernel": {
+      "label": "svc_kernel",
       "type": "categorical",
       "choices": ["linear", "poly", "rbf", "sigmoid"]
     },
-    "c": {
+    "C": {
+      "label": "svc_C",
       "type": "float",
       "log": true,
       "low": 1e-3,

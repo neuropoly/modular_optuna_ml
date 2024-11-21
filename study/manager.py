@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 from copy import copy as shallow_copy
+from itertools import chain
 from types import NoneType
 from typing import Optional
 
@@ -16,11 +17,11 @@ from data import BaseDataManager
 from data.mixins import MultiFeatureMixin
 from study import METRIC_FUNCTIONS, MetricUpdater
 
-UNIVERSAL_DB_KEYS = [
-    'replicate',
-    'trial',
-    'objective'
-]
+UNIVERSAL_DB_ENTRIES = {
+    "replicate": "INTEGER",
+    "trial": "INTEGER",
+    "objective": "REAL"
+}
 
 
 class StudyManager(object):
@@ -56,14 +57,8 @@ class StudyManager(object):
         self.validate_hooks = {f"{k} (validate)": METRIC_FUNCTIONS[k] for k in self.study_config.validate_hooks}
         self.test_hooks = {f"{k} (test)": METRIC_FUNCTIONS[k] for k in self.study_config.test_hooks}
 
-        # Explicitly define a metric order for later DB-side management
-        self.db_order = self.non_param_cols()
-
-        # Extend the DB order with the parameters of the model if the user requested it
-        if self.study_config.track_params:
-            self.db_order.extend(self.model_config.parameters.keys())
-
-        # Generate some null attributes to be filled later
+        # Generate some null DB-related attributes to be filled during DB initialization
+        self.db_cols: Optional[dict[str: str]] = None
         self.db_connection : Optional[sqlite3.Connection] = None
         self.db_cursor : Optional[sqlite3.Cursor] = None
 
@@ -91,21 +86,16 @@ class StudyManager(object):
         # Return the result
         return logger
 
-    def train_metric_cols(self):
+    def train_hook_keys(self):
+        """
+        As there are (usually) multiple crosses per validation step, train hooks are run multiple times as well.
+        This gives each cross a unique DB column to save within
+        """
         train_cols = []
         for k, v in self.train_hooks.items():
             new_cols = [f"{k} [{i}]" for i in range(self.study_config.no_crosses)]
             train_cols.extend(new_cols)
         return train_cols
-
-    def non_param_cols(self):
-        return [
-            *UNIVERSAL_DB_KEYS,
-            *self.data_config.data_manager.tuned_params(),
-            *self.train_metric_cols(),
-            *self.validate_hooks.keys(),
-            *self.test_hooks.keys()
-        ]
 
     """ DB Management """
     def init_db(self):
@@ -132,25 +122,25 @@ class StudyManager(object):
                         f"DROP TABLE IF EXISTS {self.study_label};"
                     )
 
-            # Generate a list of all the columns to place in the table
-            col_vals = [f"'{c}'" for c in self.non_param_cols()]
+            # Initiate list for maintaining order in our saved metrics, so they can be saved to the database easily
+            self.db_cols = {k: v for k, v in UNIVERSAL_DB_ENTRIES.items()}
 
-            # If we're tracking the model parameters as well, add them to the DB columns as well
-            if self.study_config.track_params:
-                # Add them back to the
-                for k, v in self.model_config.parameters.items():
-                    # Everything that is not a dictionary defining how it's should be samples must be text-like
-                    new_col = None
-                    if not isinstance(v, dict):
-                        new_col = f"{k} TEXT"
-                    # If it is a dict, pull the type and check against it instead
-                    elif v.get("type") == "float":
-                        new_col = f"{k} REAL"
-                    elif v.get("type") == "int":
-                        new_col = f"{k} INTEGER"
-                    else:
-                        new_col = f"{k} TEXT"
-                    col_vals.append(new_col)
+            # Track any tunable pre-processing parameters
+            for p in self.data_config.data_manager.tunable_params():
+                self.db_cols[p.label] = p.db_type
+
+            # Track any tune-able model parameter as well
+            for p in self.model_config.model_manager.tunable_params():
+                self.db_cols[p.label] = p.db_type
+
+            # Track our data hooks as well, in train->validate->test order
+            for k in chain(self.train_hook_keys(), self.validate_hooks.keys(), self.test_hooks.keys()):
+                # Metrics are always floating point numbers
+                self.db_cols[k] = "REAL"
+                # TODO: accomodate for non-floating types
+
+            # Generate the column entries needed to define the SQL query
+            sql_components = [f"'{label}' {db_type}" for label, db_type in self.db_cols.items()]
 
             # Create the table for this study
             try:
@@ -158,7 +148,7 @@ class StudyManager(object):
                     # Table should share its name with the study
                     f"CREATE TABLE {self.study_label} "
                     # Should contain all columns desired by the user
-                    f"({', '.join(col_vals)})"
+                    f"({', '.join(sql_components)})"
                 )
             except sqlite3.OperationalError as err:
                 if "already exists" in err.args[0]:
@@ -179,23 +169,20 @@ class StudyManager(object):
             "objective": objective_val
         })
 
-        # Extend the dict with our tunable-parameters
-        for p in self.data_config.data_manager.tuned_params():
-            new_entry_components[p] = trial.params.get(p)
-
-        # If the user wants model parameters saved, add them too
-        if self.study_config.track_params:
-            for k, v in self.model_config.parameters.items():
-                tv = trial.params.get(k, None)
-                # If the trial didn't have a value for the parameter, set it to null
-                if tv is None:
-                    new_entry_components[k] = "NULL"
-                # For everything else, just leave it be
-                else:
-                    new_entry_components[k] = tv
+        # Extend further with our trial-tuned parameter values
+        tunable_param = [*self.data_config.data_manager.tunable_params(), *self.model_config.model_manager.tunable_params()]
+        for p in tunable_param:
+            p_label = p.label
+            v = trial.params.get(p_label, None)
+            # If the trial didn't have a value for the parameter, set it to null
+            if v is None:
+                new_entry_components[p_label] = "NULL"
+            # For everything else, just leave it be
+            else:
+                new_entry_components[p_label] = v
 
         # Re-order the values so they can cleanly save into the dataset
-        ordered_values = [new_entry_components[k] for k in self.db_order]
+        ordered_values = [new_entry_components[k] for k in self.db_cols]
 
         # Format them as valid strings, so that SQL doesn't have a fit
         ordered_values = [str(v) if isinstance(v, int | float | NoneType) else f"'{v}'" for v in ordered_values]

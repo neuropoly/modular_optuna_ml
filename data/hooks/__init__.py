@@ -2,13 +2,13 @@
 from logging import Logger
 from typing import Type
 
-from data.hooks.base import BaseDataHook
+from data.hooks.base import DataHook
 
-DATA_HOOKS: dict[str, Type[BaseDataHook]] = {}
+DATA_HOOKS: dict[str, Type[DataHook]] = {}
 
 # Decorator to allow for registry key to be kept alongside the class of interest
 def registered_data_hook(key: str):
-    def _decorator(cls: Type[BaseDataHook]):
+    def _decorator(cls: Type[DataHook]):
         # Decorator which registers a data manager under a specific key automatically
         if key in DATA_HOOKS.keys():
             Logger.root.warning(f"Overwriting data hook '{key}' which already existed. "

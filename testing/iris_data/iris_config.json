@@ -6,10 +6,6 @@
   "foo": "bar",
   "pre_split_hooks": [
     {
-      "type": "drop_features_explicit",
-      "features": ["color"]
-    },
-    {
       "type": "feature_drop_null",
       "threshold": 0.5
     }, {
@@ -18,6 +14,10 @@
     }
   ],
   "post_split_hooks": [
+    {
+      "type": "one_hot_encode",
+      "features": ["color"]
+    },
     {
       "type": "imputation_simple",
       "strategy": "mean",

@@ -10,15 +10,27 @@ class SciKitLearnModelManager(OptunaModelManager[T], ABC):
     """
     Simple wrapper for SciKit-Learn based model managers
     """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._model = None
 
-    def predict(self, model: T, x: np.ndarray):
+    def get_model(self) -> T:
+        return self._model
+
+    def fit(self, x: np.ndarray, y: np.ndarray):
+        """
+        Use SciKit-Learn's standardized 'fit' function by default
+        """
+        self.get_model().fit(x, y)
+
+    def predict(self, x: np.ndarray):
         """
         Use SciKit-Learn's standardized 'predict' function by default
         """
-        return model.predict(x)
+        return self.get_model().predict(x)
 
-    def predict_proba(self, model: T, x: np.ndarray):
+    def predict_proba(self, x: np.ndarray):
         """
         Use SciKit-Learn's standardized 'predict_proba' function by default
         """
-        return model.predict_proba(x)
+        return self.get_model().predict_proba(x)

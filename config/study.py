@@ -24,7 +24,6 @@ class StudyConfig(object):
         self.no_trials = self.parse_no_trials()
         self.objective = self.parse_objective()
         self.output_path = self.parse_output_path()
-        self.track_params = self.parse_track_params()
 
         # Special case, as this is a dict of lists that gets split based on labels
         self.train_hooks, self.validate_hooks, self.test_hooks = self.parse_metric_hooks()
@@ -123,10 +122,4 @@ class StudyConfig(object):
         # TODO: Allow for non-filepath based storage options
         return parse_data_config_entry(
             "output_path", self.json_data, is_not_null(self.logger), as_path()
-        )
-
-    def parse_track_params(self):
-        default_false = default_as(False, self.logger)
-        return parse_data_config_entry(
-            "track_params", self.json_data,default_false, is_bool(self.logger)
         )

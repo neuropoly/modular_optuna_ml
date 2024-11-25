@@ -2,12 +2,21 @@
   "label": "RandomForestClassifier",
   "model": "RFC",
   "parameters": {
-    "criterion": ["gini", "entropy", "log_loss"],
+    "criterion": {
+      "label": "rfc_criterion",
+      "type": "categorical",
+      "choices": ["gini", "entropy", "log_loss"]
+    },
     "min_samples_split": {
+      "label": "rfc_min_samples_split",
       "type": "int",
       "low": 2,
       "high": 12
     },
-    "max_features": [10, "sqrt", "log2"]
+    "max_features": {
+      "label": "rfc_max_features",
+      "type": "categorical",
+      "choices": [10, "sqrt", "log2"]
+    }
   }
 }

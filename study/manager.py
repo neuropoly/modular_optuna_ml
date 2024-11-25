@@ -1,7 +1,9 @@
 import logging
 import sqlite3
-from typing import Optional
 from copy import copy as shallow_copy
+from itertools import chain
+from types import NoneType
+from typing import Optional
 
 import numpy as np
 import optuna
@@ -15,11 +17,11 @@ from data import BaseDataManager
 from data.mixins import MultiFeatureMixin
 from study import METRIC_FUNCTIONS, MetricUpdater
 
-UNIVERSAL_DB_KEYS = [
-    'replicate',
-    'trial',
-    'objective'
-]
+UNIVERSAL_DB_ENTRIES = {
+    "replicate": "INTEGER",
+    "trial": "INTEGER",
+    "objective": "REAL"
+}
 
 
 class StudyManager(object):
@@ -55,14 +57,8 @@ class StudyManager(object):
         self.validate_hooks = {f"{k} (validate)": METRIC_FUNCTIONS[k] for k in self.study_config.validate_hooks}
         self.test_hooks = {f"{k} (test)": METRIC_FUNCTIONS[k] for k in self.study_config.test_hooks}
 
-        # Explicitly define a metric order for later DB-side management
-        self.db_order = self.non_param_cols()
-
-        # Extend the DB order with the parameters of the model if the user requested it
-        if self.study_config.track_params:
-            self.db_order.extend(self.model_config.parameters.keys())
-
-        # Generate some null attributes to be filled later
+        # Generate some null DB-related attributes to be filled during DB initialization
+        self.db_cols: Optional[dict[str: str]] = None
         self.db_connection : Optional[sqlite3.Connection] = None
         self.db_cursor : Optional[sqlite3.Cursor] = None
 
@@ -90,20 +86,16 @@ class StudyManager(object):
         # Return the result
         return logger
 
-    def train_metric_cols(self):
+    def train_hook_keys(self):
+        """
+        As there are (usually) multiple crosses per validation step, train hooks are run multiple times as well.
+        This gives each cross a unique DB column to save within
+        """
         train_cols = []
         for k, v in self.train_hooks.items():
             new_cols = [f"{k} [{i}]" for i in range(self.study_config.no_crosses)]
             train_cols.extend(new_cols)
         return train_cols
-
-    def non_param_cols(self):
-        return [
-            *UNIVERSAL_DB_KEYS,
-            *self.train_metric_cols(),
-            *self.validate_hooks.keys(),
-            *self.test_hooks.keys(),
-        ]
 
     """ DB Management """
     def init_db(self):
@@ -130,23 +122,25 @@ class StudyManager(object):
                         f"DROP TABLE IF EXISTS {self.study_label};"
                     )
 
-            # Generate a list of all the columns to place in the table
-            col_vals = [f"'{c}'" for c in self.non_param_cols()]
+            # Initiate list for maintaining order in our saved metrics, so they can be saved to the database easily
+            self.db_cols = {k: v for k, v in UNIVERSAL_DB_ENTRIES.items()}
 
-            # If we're tracking the model parameters as well, add them to the DB columns as well
-            if self.study_config.track_params:
-                # Add them back to the
-                for k, v in self.model_config.parameters.items():
-                    # Everything that is not a dictionary defining how it's should be samples must be text-like
-                    if not isinstance(v, dict):
-                        col_vals.append(f"{k} TEXT")
-                    # If it is a dict, pull the type and check against it instead
-                    elif v.get("type") == "float":
-                        col_vals.append(f"{k} REAL")
-                    elif v.get("type") == "int":
-                        col_vals.append(f"{k} INTEGER")
-                    else:
-                        col_vals.append(f"{k} TEXT")
+            # Track any tunable pre-processing parameters
+            for p in self.data_config.data_manager.tunable_params():
+                self.db_cols[p.label] = p.db_type
+
+            # Track any tune-able model parameter as well
+            for p in self.model_config.model_manager.tunable_params():
+                self.db_cols[p.label] = p.db_type
+
+            # Track our data hooks as well, in train->validate->test order
+            for k in chain(self.train_hook_keys(), self.validate_hooks.keys(), self.test_hooks.keys()):
+                # Metrics are always floating point numbers
+                self.db_cols[k] = "REAL"
+                # TODO: accomodate for non-floating types
+
+            # Generate the column entries needed to define the SQL query
+            sql_components = [f"'{label}' {db_type}" for label, db_type in self.db_cols.items()]
 
             # Create the table for this study
             try:
@@ -154,7 +148,7 @@ class StudyManager(object):
                     # Table should share its name with the study
                     f"CREATE TABLE {self.study_label} "
                     # Should contain all columns desired by the user
-                    f"({', '.join(col_vals)})"
+                    f"({', '.join(sql_components)})"
                 )
             except sqlite3.OperationalError as err:
                 if "already exists" in err.args[0]:
@@ -164,67 +158,46 @@ class StudyManager(object):
             # Return the result
             return con, cur
 
-    def save_results(self, replicate_n, trial, objective_val, metrics):
+    def save_results(self, replicate_n, trial: optuna.Trial, objective_val, metrics):
         # Generate the list of values to be saved to the DB
         new_entry_components = shallow_copy(metrics)
+
+        # Extend the dict with our universal metrics
         new_entry_components.update({
             "replicate": replicate_n,
             "trial": trial.number,
             "objective": objective_val
         })
 
-        # If the user wants model parameters saved, add them too
-        if self.study_config.track_params:
-            for k, v in self.model_config.parameters.items():
-                tv = trial.params.get(k, None)
-                # If the trial didn't have a value for the parameter, set it to null
-                if tv is None:
-                    new_entry_components[k] = "NULL"
-                # If the associated value is non-numeric, format it to play nicely with SQLite's queries
-                elif not isinstance(v, dict):
-                    new_entry_components[k] = f"'{tv}'"
-                # For everything else, just leave it be
-                else:
-                    new_entry_components[k] = tv
+        # Extend further with our trial-tuned parameter values
+        tunable_param = [*self.data_config.data_manager.tunable_params(), *self.model_config.model_manager.tunable_params()]
+        for p in tunable_param:
+            p_label = p.label
+            v = trial.params.get(p_label, None)
+            # If the trial didn't have a value for the parameter, set it to null
+            if v is None:
+                new_entry_components[p_label] = "NULL"
+            # For everything else, just leave it be
+            else:
+                new_entry_components[p_label] = v
 
-        # Format them into clean strings so they play nice with the DB query formatting
-        ordered_values = [str(new_entry_components[k]) for k in self.db_order]
+        # Re-order the values so they can cleanly save into the dataset
+        ordered_values = [new_entry_components[k] for k in self.db_cols]
+
+        # Format them as valid strings, so that SQL doesn't have a fit
+        ordered_values = [str(v) if isinstance(v, int | float | NoneType) else f"'{v}'" for v in ordered_values]
         new_entry = ", ".join(ordered_values)
 
         # Push the results to the db
         self.db_cursor.execute(f"INSERT INTO {self.study_label} VALUES ({new_entry})")
         self.db_connection.commit()
 
-    """ ML Management """
+    """ Management """
     def run(self):
-        # Control for RNG before proceeding
-        init_seed = self.study_config.random_seed
-        np.random.seed(init_seed)
-
-        # Get the DataManager from the config
-        data_manager = self.data_config.data_manager
-
-        # Generate the requested number of splits, so each replicate will have a unique validation group
-        replicate_seeds = np.random.randint(0, np.iinfo(np.int32).max, size=self.study_config.no_replicates)
-        skf_splitter = StratifiedKFold(n_splits=self.study_config.no_replicates, random_state=init_seed, shuffle=True)
-
-        # Isolate the target column(s) from the dataset
-        if isinstance(data_manager, MultiFeatureMixin):
-            x = data_manager.get_features([c for c in data_manager.features() if c != self.study_config.target])
-            y = data_manager.get_features(self.study_config.target)
-            # Why is PyCharm's type hinting so dogshit?
-            x: BaseDataManager | MultiFeatureMixin
-            y: BaseDataManager | MultiFeatureMixin
-        else:
-            raise NotImplementedError("Unsupervised analyses are not currently supported")
-
-        # Process the dataset with any operations that should be done pre-split
-        x = x.pre_split(is_cross=False)
-
-        # Initiate the DB and create a table within it for the study's results
-        self.db_connection, self.db_cursor = self.init_db()
+        init_seed, replicate_seeds, x, y = self.prepare_run()
 
         # Run the study once for each replicate
+        skf_splitter = StratifiedKFold(n_splits=self.study_config.no_replicates, random_state=init_seed, shuffle=True)
         for i, (train_idx, test_idx) in enumerate(skf_splitter.split(x.as_array(), y.as_array())):
             # Set up the workspace for this replicate
             s = int(replicate_seeds[i])
@@ -233,76 +206,89 @@ class StudyManager(object):
             # If debugging, report the sizes
             self.logger.debug(f"Test/Train ratio (split {i}): {len(test_idx)}/{len(train_idx)}")
 
-            # Split the data using the indices provided
-            train_x, test_x = x.split(train_idx, test_idx, is_cross=False)
-            # Naive split is required here to avoid running post-split processing
-            train_y, test_y = y[train_idx], y[test_idx]
-
             # Run a sub-study using this data
-            self.run_supervised(i, train_x, train_y, test_x, test_y, s)
+            self.run_replicate(i, train_idx, test_idx, x, y, s)
 
-    def run_supervised(
+    def prepare_run(self):
+        # Control for RNG before proceeding
+        init_seed = self.study_config.random_seed
+        np.random.seed(init_seed)
+        # Get the DataManager from the config
+        data_manager = self.data_config.data_manager
+        # Generate the requested number of splits, so each replicate will have a unique validation group
+        replicate_seeds = np.random.randint(0, np.iinfo(np.int32).max, size=self.study_config.no_replicates)
+
+        # Isolate the target column(s) from the dataset
+        if self.study_config.target is not None:
+            if not isinstance(data_manager, MultiFeatureMixin):
+                raise TypeError("Tried to target a feature in a dataset which only has a single feature!")
+            x = data_manager.get_features([c for c in data_manager.features() if c != self.study_config.target])
+            y = data_manager.get_features(self.study_config.target)
+            # Why is PyCharm's type hinting so dogshit?
+            x: BaseDataManager | MultiFeatureMixin
+            y: BaseDataManager | MultiFeatureMixin
+        else:
+            raise NotImplementedError("Unsupervised analyses are not currently supported")
+
+        # Initiate the DB and create a table within it for the study's results
+        self.db_connection, self.db_cursor = self.init_db()
+        return init_seed, replicate_seeds, x, y
+
+    @staticmethod
+    def train_test_split(test_idx, train_idx, x, y):
+        # Split the data using the indices provided
+        train_x, test_x = x.split(train_idx, test_idx, is_cross=False)
+        # Naive split is required here to avoid running post-split processing
+        train_y, test_y = y[train_idx], y[test_idx]
+        return test_x, test_y, train_x, train_y
+
+    def run_replicate(
             self,
             rep: int,
-            train_x: BaseDataManager,
-            train_y: BaseDataManager,
-            test_x: BaseDataManager,
-            test_y: BaseDataManager,
+            train_idx,
+            test_idx,
+            x,
+            y,
             seed: int
     ):
-        # Generate the study name for this run
+        # Generate the name for this run
         study_name = f"{self.study_label} [{rep}]"
 
-        # Run the model specified by the model config on the data
+        # Grab the model manager specified by the model config
         model_manager = self.model_config.model_manager
 
         # Define the function which will utilize a trial's parameters to generate models to-be-tested
         def opt_func(trial: optuna.Trial):
             # Initiate a dictionary to track all metrics requested to be recorded by the user
-            metric_vals = dict()
+            metric_dict = dict()
 
-            # Re-run any preprocessing the user has requested on the training subset
-            prepped_x = train_x.pre_split(is_cross=True)
+            # Tune the data and model managers
+            model_manager.tune(trial)
+            x.tune(trial)
+
+            # Run any pre-split pre-processing
+            prepped_x = x.pre_split(is_cross=False)
+
+            # Split the data into the composite components
+            test_x, test_y, train_x, train_y = self.train_test_split(test_idx, train_idx, prepped_x, y)
 
             # Run a subset analysis on the training data, split once for each cross requested
-            cross_splitter = StratifiedKFold(n_splits=self.study_config.no_crosses, random_state=seed, shuffle=True)
-            objective_cross_values = np.zeros(self.study_config.no_crosses)
-            for i, (ti, vi) in enumerate(cross_splitter.split(train_x.as_array(), train_y.as_array())):
+            objective_value = self.run_cv_trial(train_x, train_y, trial, metric_dict)
 
-                # Split the components along the desired axes
-                tx, vx = prepped_x.split(ti, vi, is_cross=True)
-                ty, vy = train_y[ti], train_y[vi]
-
-                # Generate and fit a new instance of the model to the training subset
-                model = model_manager.build_model(trial)
-                rty = np.ravel(ty.as_array())
-                model.fit(tx.as_array(), rty)  # 'ravel' saves us a warning log
-
-                # Calculate the objective metric for this function and store it
-                objective_cross_values[i] = self.objective_func(model_manager, model, vx, vy)
-
-                # Calculate the metrics requested by the user at the "train" hook
-                for k, v in self.train_hooks.items():
-                    metric_vals[f"{k} [{i}]"] = v(model_manager, model, tx, ty)
-
-            # Generate and fit the model to the full training set
-            model = model_manager.build_model(trial)
+            # Generate and fit a model to the full dataset with the current replicate
             train_y_flat = np.ravel(train_y.as_array()) # Ravel prevents a warning log
-            model.fit(prepped_x.as_array(), train_y_flat)
-
-            # Calculate the objective function's value on the test set as well
-            objective_value = np.mean(objective_cross_values)
+            model_manager.fit(train_x.as_array(), train_y_flat)
 
             # Calculate and record any validation metrics
             for k, metric_func in self.validate_hooks.items():
-                metric_vals[k] = metric_func(self.model_config.model_manager, model, prepped_x, train_y)
+                metric_dict[k] = metric_func(model_manager, train_x, train_y)
 
             # Calculate any metrics requested by the user, including the objective function
             for k, metric_func in self.test_hooks.items():
-                metric_vals[k] = metric_func(self.model_config.model_manager, model, test_x, test_y)
+                metric_dict[k] = metric_func(model_manager, test_x, test_y)
 
             # Save the metric values to the DB
-            self.save_results(rep, trial, objective_value, metric_vals)
+            self.save_results(rep, trial, objective_value, metric_dict)
 
             # Return the objective function so Optuna can run optimization based on it
             return objective_value
@@ -314,3 +300,37 @@ class StudyManager(object):
             sampler=sampler
         )
         study.optimize(opt_func, n_trials=self.study_config.no_trials)
+
+    def run_cv_trial(self, x, y, trial, metric_dict):
+        # Grab the model manager for the model we want to test
+        model_manager = self.model_config.model_manager
+
+        # Run any pre-split preparations the dataset has again
+        prepped_x = x.pre_split(is_cross=True)
+
+        # Track the objective values for each cross
+        objective_cross_values = np.zeros(self.study_config.no_crosses)
+
+        cross_splitter = StratifiedKFold(
+            n_splits=self.study_config.no_crosses, random_state=self.study_config.random_seed, shuffle=True
+        )
+        for i, (ti, vi) in enumerate(cross_splitter.split(x.as_array(), y.as_array())):
+            # Tune the model based on the trial's parameters
+            model_manager.tune(trial)
+
+            # Split the components along the desired axes
+            tx, vx = prepped_x.split(ti, vi, is_cross=True)
+            ty, vy = y[ti], y[vi]
+
+            # Generate and fit a new instance of the model to the training subset
+            rty = np.ravel(ty.as_array())
+            model_manager.fit(tx.as_array(), rty)  # 'ravel' saves us a warning log
+
+            # Calculate the objective metric for this function and store it
+            objective_cross_values[i] = self.objective_func(model_manager, vx, vy)
+
+            # Calculate the metrics requested by the user at the "train" hook
+            for k, v in self.train_hooks.items():
+                metric_dict[f"{k} [{i}]"] = v(model_manager, tx, ty)
+
+        return np.mean(objective_cross_values)

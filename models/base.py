@@ -1,103 +1,65 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Iterable, TypeVar
 
 import numpy as np
 from optuna import Trial
 
+from tuning.utils import Tunable, TunableParam
+
 T = TypeVar('T')
 
-class OptunaModelManager(Generic[T], ABC):
+class OptunaModelManager(Tunable, Generic[T], ABC):
     """
     An abstract class which should be subclassed and implemented for all machine learning models which want automated
     hyperparameter tuning within this framework.
     """
-    @staticmethod
-    def optuna_trial_param_parser(key: str, params: Any):
-        """
-        Generates a closure function capable of generating Optuna-compatible values when provided an Optuna trial
-        :param key: The name/label this closure should have, used by Optuna when logging results
-        :param params: The parameters used to determine how new model hyperparameters will be generated for a given trial
-        :return: A closure function which takes an Optuna trial and returns a hyperparameter values samples from it
-        """
-        # If the parameter is a float or int range, it will be in the config as a dictionary
-        param_type = type(params)
-        if param_type is dict:
-            param_type = params.get('type')
-            if param_type == 'float':
-                low_val = params.get('low')
-                high_val = params.get('high')
-                return lambda t: t.suggest_float(
-                    name=key,
-                    low=low_val,
-                    high=high_val,
-                    step=params.get('step', None),
-                    log=params.get('log', False)
-                )
-            elif param_type == 'int':
-                low_val = params.get('low')
-                high_val = params.get('high')
-                return lambda t: t.suggest_int(
-                    name=key,
-                    low=low_val,
-                    high=high_val,
-                    step=params.get('step', 1),
-                    log=params.get('log', False)
-                )
-        # If it's a list of values, its categorical
-        elif param_type is list:
-            return lambda t: t.suggest_categorical(
-                name=key,
-                choices=params
-            )
-        # If it's a string, it's a single-choice and which should always be returned
-        elif param_type is str:
-            return lambda t: t.suggest_categorical(
-                name=key,
-                choices=[params]
-            )
-        # Otherwise warn the user and return None
-        print(f"WARNING: parameter '{key}' within the ML configuration was an invalid type!")
-        return None
-
-    _type_T: type[T]
-
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        # Check if this is a properly instantiated class w/ a declared generic type
-        if orig_bases := cls.__dict__.get('__orig_bases__', False):
-            # If it is, and there is a type declared, track it; ignore the warnings, PyCharm is just being stupid here
-            if len(orig_bases) > 0:
-                cls._type_T = orig_bases[0]
-
     def __init__(self, **kwargs):
-        # By default, just parse all key-word arguments into a 'trial_closures' parameter to manage later
-        self.trial_closures = {}
+        super().__init__(**kwargs)
+        # By default, just parse all key-word arguments into a 'params' dict to manage later
+        self.params: dict[str, Any] = {}
+        self._tunable_params: list[TunableParam] = []
         for k, v in kwargs.items():
-            self.trial_closures[k] = OptunaModelManager.optuna_trial_param_parser(k, v)
-
-    def get_type(self):
-        return self._type_T
-
-    @abstractmethod
-    def build_model(self, trial: Trial) -> T:
-        """
-        Build a corresponding model using parameters derived from an Optuna trial.
-        :param trial: The Optuna trial to generate params from
-        :return: A model generated using the trial
-        """
-        return None
+            if isinstance(v, dict):
+                new_param = TunableParam.from_config_entry(v)
+                self.params[k] = new_param
+                self._tunable_params.append(new_param)
+            else:
+                self.params[k] = v
 
     @abstractmethod
-    def predict(self, model: T, x: np.ndarray) -> np.ndarray:
+    def get_model(self) -> T:
+        """
+        Returns current model instance managed by this manager, if one exists
+        """
+        ...
+
+    @abstractmethod
+    def fit(self, x: np.ndarray, y: np.ndarray):
+        """
+        Fit the model managed by this model manager to the data provided
+        :param x: The data features to fit
+        :param y: The data target to fit
+        """
+        ...
+
+    def evaluate_param(self, key: str):
+        param = self.params[key]
+        if isinstance(param, TunableParam):
+            return param.value
+        else:
+            return param
+
+    @abstractmethod
+    def predict(self, x: np.ndarray) -> np.ndarray:
         """
         Generate the predictions from a model of the type managed by this class
         :param model: The model to generate predictions from
         :param x: The data for said model to use to generate the predictions, in NP-array-like format
         :return: The generated predictions, in a np-like array
         """
-        pass
+        ...
 
-    def predict_proba(self, model: T, x: np.ndarray) -> np.ndarray:
+    def predict_proba(self, x: np.ndarray) -> np.ndarray:
         """
         Predict the (pseudo-) probability of each class the model has been tasked with. Optional implementation, as
         not all OptunaModelManagers manage categorical models
@@ -106,3 +68,12 @@ class OptunaModelManager(Generic[T], ABC):
         :return: The generated probability estimates
         """
         raise NotImplementedError(f"'{type(self)}' has not implemented the 'predict_proba' function")
+
+    def tune(self, trial: Trial):
+        # Tune all tunable parameters
+        for p in self.tunable_params():
+            p.tune(trial)
+
+    def tunable_params(self) -> Iterable[TunableParam]:
+        # By default, just report the labels for all tracked tunable params
+        return self._tunable_params

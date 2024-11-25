@@ -1,10 +1,9 @@
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable
 
 from study.metrics import *
 
 # Generic type for functions which can generate some metric(s) to be recorded by the user
-T = TypeVar('T')
-MetricUpdater = Callable[[OptunaModelManager[T], T, BaseDataManager, BaseDataManager], Any]
+MetricUpdater = Callable[[OptunaModelManager, BaseDataManager, BaseDataManager], Any]
 
 # Dictionary of available-by-default metric functions
 METRIC_FUNCTIONS: dict[str, MetricUpdater] = {

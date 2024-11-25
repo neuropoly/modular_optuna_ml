@@ -1,3 +1,4 @@
+from itertools import chain
 from logging import Logger
 from pathlib import Path
 from typing import Iterable, Optional, Self
@@ -8,8 +9,9 @@ import pandas as pd
 from config.utils import as_str, default_as, is_file, is_list, parse_data_config_entry
 from data.base import BaseDataManager, registered_datamanager
 from data.hooks import DATA_HOOKS
-from data.hooks.base import BaseDataHook, FittedHook, StatelessHook
+from data.hooks.base import DataHook, FittedDataHook
 from data.mixins import MultiFeatureMixin
+from tuning.utils import Tunable
 
 
 @registered_datamanager("tabular")
@@ -19,17 +21,18 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
 
     Uses a Panda's dataframe as a backend to read the files and manage the majority of data queries and modifications.
     """
-    def __init__(self, logger: Logger = Logger.root):
-        # Use 'from_config' below, rather than using this constructor directly
-        self.logger = logger
+    def __init__(self, **kwargs):
+        # Don't use this constructor directly; use 'from_config' instead
+        super().__init__(**kwargs)
 
         # Default parameters
         self._data: Optional[pd.DataFrame] = None
         self._sep: str = ','
 
         # Hook storing variables for later
-        self.pre_split_hooks: list[BaseDataHook] = []
-        self.post_split_hooks: list[BaseDataHook] = []
+        self.pre_split_hooks: list[DataHook] = []
+        self.post_split_hooks: list[DataHook] = []
+        self.tunable_hooks: list[Tunable | DataHook] = []
 
     def __len__(self):
         return self.data.shape[0]
@@ -65,17 +68,25 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
             "pre_split_hooks", config, default_as([], logger), is_list(logger)
         )
         for hook_config in pre_split_hooks:
-            # Interpret the configuration file for this hook to ensure its a valid type
+            # Interpret the configuration file for this hook to ensure it is a valid type
             hook_label = hook_config.pop('type')
             hook_cls = DATA_HOOKS.get(hook_label, None)
+            # If no hook of the type queried was found, raise an error and return
             if hook_cls is None:
                 raise ValueError(f"Could not find a registered data hook of type '{hook_label}'; terminating.")
-            if not issubclass(hook_cls, StatelessHook):
-                logger.warning(f"Pre-split hook '{hook_cls.__name__}' is not stateless; "
-                               f"this is likely to result in data overfitting! Are you sure this was intended?")
+
+            # If the hook was not stateless, warn the user
+            if issubclass(hook_cls, FittedDataHook):
+                logger.warning(
+                    f"Pre-split hook '{hook_cls.__name__}' is designed to fit to one dataset, then apply to another; "
+                    f"this is likely to result in data overfitting! Are you sure this was intended?"
+                )
 
             # Attempt to instantiate the hook type based on the configs contents
-            new_instance.pre_split_hooks.append(hook_cls.from_config(config=hook_config, logger=logger))
+            new_hook = hook_cls.from_config(config=hook_config, logger=logger)
+
+            # Save the results
+            new_instance.pre_split_hooks.append(new_hook)
 
         # Retrieve and parse the post-split data hooks
         post_split_hooks = parse_data_config_entry(
@@ -84,12 +95,26 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         for hook_config in post_split_hooks:
             hook_label = hook_config.pop('type')
             hook_cls = DATA_HOOKS.get(hook_label, None)
+
+            # If no hook of the type queried was found, raise an error and return
             if hook_cls is None:
                 raise ValueError(f"Could not find data hook of type '{hook_label}'; terminating.")
-            if not issubclass(hook_cls, FittedHook):
+
+            # If the hook was not stateless, warn the user
+            if not issubclass(hook_cls, FittedDataHook):
                 logger.warning(f"Post-split hook '{hook_cls.__name__}' is not fitted; "
                                f"are you sure you wanted to run it post-split?")
-            new_instance.post_split_hooks.append(hook_cls.from_config(config=hook_config, logger=logger))
+
+            # Attempt to instantiate the hook type based on the configs contents
+            new_hook = hook_cls.from_config(config=hook_config, logger=logger)
+
+            # Save the results
+            new_instance.post_split_hooks.append(new_hook)
+
+        # Identify any hooks which can be tuned, so they can be tuned upon request
+        for h in chain(new_instance.pre_split_hooks, new_instance.post_split_hooks):
+            if isinstance(h, Tunable):
+                new_instance.tunable_hooks.append(h)
 
         return new_instance
 
@@ -140,19 +165,13 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         new_instance = self
         for hook in self.pre_split_hooks:
             # Skip a hook if it has specified it should only be run during a hook point we are not in
-            if is_cross and not hook.should_run_during_crosses():
+            if not is_cross and hook.run_per_cross:
                 continue
-            elif not is_cross and not hook.should_run_during_replicates():
+            elif is_cross and hook.run_per_replicate:
                 continue
 
             # If not, apply the hook to the data
-            if isinstance(hook, StatelessHook):
-                new_instance = hook.run(new_instance)
-            elif isinstance(hook, FittedHook):
-                new_instance, _ = hook.run(new_instance)
-            else:
-                self.logger.warning(f"Skipped data hook '{hook.__name__}' during pre-split, "
-                                    f"as it is neither a FittedHook or StatelessHook type.")
+            new_instance = hook.run(new_instance)
 
         # Return the results
         return new_instance
@@ -167,21 +186,18 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         # Run at data processing hooks the user requested
         for hook in self.post_split_hooks:
             # Skip a hook if it has specified it should only be run during a hook point we are not in
-            if is_cross and not hook.should_run_during_crosses():
+            if is_cross and not hook.run_per_cross:
                 continue
-            elif not is_cross and not hook.should_run_during_replicates():
+            elif not is_cross and not hook.run_per_replicate:
                 continue
 
             # If the hook needs to be fit, use the training set to do so
-            if isinstance(hook, FittedHook):
-                train_instance, test_instance = hook.run(train_instance, test_instance)
+            if isinstance(hook, FittedDataHook):
+                train_instance, test_instance = hook.run_fitted(train_instance, test_instance)
             # Otherwise, just apply the hook to both instances independently
-            elif isinstance(hook, StatelessHook):
+            else:
                 train_instance = hook.run(train_instance)
                 test_instance = hook.run(test_instance)
-            else:
-                self.logger.warning(f"Skipped data hook '{hook.__name__}', "
-                                    f"as it is neither a FittedHook or StatelessHook type.")
 
         # Return the resulting split
         return train_instance, test_instance
@@ -193,5 +209,6 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         new_instance._sep = self._sep
         new_instance.pre_split_hooks = self.pre_split_hooks
         new_instance.post_split_hooks = self.post_split_hooks
+        new_instance.tunable_hooks = self.tunable_hooks
 
         return new_instance

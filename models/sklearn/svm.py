@@ -1,7 +1,6 @@
 """
 Contains default implementations for a number of support vector models within SciKitLearn for use in this framework
 """
-
 from optuna import Trial
 from sklearn.svm import SVC
 
@@ -12,21 +11,20 @@ class SVCManager(SciKitLearnModelManager[SVC]):
     """
     Optuna model manager for the SVC class in SciKit-Learn
     """
-    def build_model(self, trial: Trial):
-        # Get the kernel for this trial
-        kernel = self.trial_closures['kernel'](trial)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-        # Get the C value for this trial
-        c = self.trial_closures['c'](trial)
+    def tune(self, trial: Trial):
+        # Tune this model based on the trial parameters
+        super().tune(trial)
 
-        # Return the resulting model
-        return SVC(C=c, kernel=kernel, probability=True)
+        # Rebuild the model using the newly tuned parameters
+        model_kwargs = {k: self.evaluate_param(k) for k in self.params.keys()}
+        self._model = SVC(**model_kwargs, probability=True)
 
-        # TODO: Extend this with more parameters
-
-    def predict_proba(self, model: SVC, x):
-        if model.probability:
-            return model.predict_proba(x)
+    def predict_proba(self, x):
+        if self._model.probability:
+            return self._model.predict_proba(x)
         else:
             # Local import to avoid a global one potentially polluting the namespace during "healthy" runs
             from sklearn.exceptions import NotFittedError

@@ -236,10 +236,12 @@ class StudyManager(object):
 
     @staticmethod
     def train_test_split(test_idx, train_idx, x, y):
-        # Split the data using the indices provided
-        train_x, test_x = x.split(train_idx, test_idx, is_cross=False)
-        # Naive split is required here to avoid running post-split processing
+        # Naive split is required for target values to avoid running post-split processing
         train_y, test_y = y[train_idx], y[test_idx]
+
+        # Split the data using the indices provided
+        train_x, test_x = x.split(train_idx, test_idx, train_y, test_y, is_cross=False)
+
         return test_x, test_y, train_x, train_y
 
     def run_replicate(
@@ -267,7 +269,7 @@ class StudyManager(object):
             x.tune(trial)
 
             # Run any pre-split pre-processing
-            prepped_x = x.pre_split(is_cross=False)
+            prepped_x = x.pre_split(target=y, is_cross=False)
 
             # Split the data into the composite components
             test_x, test_y, train_x, train_y = self.train_test_split(test_idx, train_idx, prepped_x, y)
@@ -306,7 +308,7 @@ class StudyManager(object):
         model_manager = self.model_config.model_manager
 
         # Run any pre-split preparations the dataset has again
-        prepped_x = x.pre_split(is_cross=True)
+        prepped_x = x.pre_split(target=y, is_cross=True)
 
         # Track the objective values for each cross
         objective_cross_values = np.zeros(self.study_config.no_crosses)
@@ -319,8 +321,8 @@ class StudyManager(object):
             model_manager.tune(trial)
 
             # Split the components along the desired axes
-            tx, vx = prepped_x.split(ti, vi, is_cross=True)
             ty, vy = y[ti], y[vi]
+            tx, vx = prepped_x.split(ti, vi, ty, vy, is_cross=True)
 
             # Generate and fit a new instance of the model to the training subset
             rty = np.ravel(ty.as_array())

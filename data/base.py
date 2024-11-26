@@ -59,7 +59,7 @@ class BaseDataManager(Sequence, Tunable, ABC):
         ...
 
     @abstractmethod
-    def pre_split(self, is_cross: bool) -> Self:
+    def pre_split(self, is_cross: bool, targets: Self = None) -> Self:
         """
         Run anything that needs to be run prior to the data being train-test split.
         Returns and instance with these modifications applied
@@ -67,11 +67,22 @@ class BaseDataManager(Sequence, Tunable, ABC):
         ...
 
     @abstractmethod
-    def split(self, train_idx, test_idx, is_cross: bool) -> (Self, Self):
+    def split(
+            self,
+            train_idx: np.ndarray,
+            test_idx: np.ndarray,
+            train_target: Self,
+            test_target: Self,
+            is_cross: bool = True
+    ) -> (Self, Self):
         """
         Split the data into two subsets. Any post-split modifications should be done here
         :param train_idx: The sample indices for the training set
         :param test_idx: The sample indices for the testing set
+        :param train_target: A dataset of values which will be used as a "target" for supervised data hooks
+            during training data processing
+        :param test_target: A dataset of values which will be used as a "target" for supervised data hooks
+            during testing data processing
         :param is_cross: Whether this split is being run during cross-validation (v.s. during replicate setup)
         :return: Two sub-instances of the same type of datamanager, being the training and testing data, respectively
         """

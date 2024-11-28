@@ -66,6 +66,7 @@ class FittedDataHook(DataHook, ABC):
         :param x_test: A dataset which will have the hook applied to it, but not fit to it.
         :param y_train: The target metric to use during fitting, if the data hook needs it.
         :param y_test: The target metric to use during application to testing, if the data hook needs it.
+            NOTE: 'y_test' is here solely for standardization, and should probably never be used to avoid overfitting!
         :return: The modified versions of x_train and x_test, after the fit has been applied to them
         """
         ...

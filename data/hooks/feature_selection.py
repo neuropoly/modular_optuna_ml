@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from optuna import Trial
 from sklearn.decomposition import PCA
+from sklearn.feature_selection import RFE
+from sklearn.linear_model import LogisticRegression
 
 from config.utils import default_as, is_float, is_list, parse_data_config_entry
 from data.base import BaseDataManager
@@ -135,12 +137,11 @@ class PrincipalComponentAnalysis(Tunable, FittedDataHook):
 
             # Drop all features and replace them with the new components
             x_out = x.drop_features(x.features())
-            x_out = x_out.set_features(feature_labels, tmp_train)
+            x_out: BaseDataManager | MultiFeatureMixin = x_out.set_features(feature_labels, tmp_train)
 
-        # Otherwise, just fit and transform everything
-        # TODO: Implement a method of converting back to the original DataManager type
+        # Otherwise, report an error, as we can't dimensionally reduce a single dimension!
         else:
-            x_out = self.backing_pca.fit_transform(x.as_array())
+            raise ValueError("Dimensionality reduction cannot be run on a dataset with only 1 dimension!")
         return x_out
 
     def run_fitted(self,
@@ -167,11 +168,83 @@ class PrincipalComponentAnalysis(Tunable, FittedDataHook):
             test_out = x_test.drop_features(x_test.features())
             test_out = test_out.set_features(feature_labels, tmp_test)
 
-        # Otherwise, just fit and transform everything
-        # TODO: Implement a method of converting back to the original DataManager type
+        # Otherwise, report an error, as we can't dimensionally reduce a single dimension!
         else:
-            train_out = self.backing_pca.fit_transform(x_train.as_array())
-            test_out = self.backing_pca.fit_transform(x_test.as_array())
+            raise ValueError("Dimensionality reduction cannot be run on a dataset with only 1 dimension!")
         return train_out, test_out
 
 
+### Recursive Feature Elimination ###
+@registered_data_hook("recursive_feature_elimination")
+class RecursiveFeatureElimination(Tunable, FittedDataHook):
+    def __init__(self, config: dict, **kwargs):
+        super().__init__(config=config, **kwargs)
+        super(FittedDataHook, self).__init__(config=config, **kwargs)
+
+        # Grab the proportion of features to select; defaults to 70%
+        select_prop = config.get("proportion", {
+            "label": "proportion",
+            "type": "constant",
+            "value": 0.7
+        })
+        self.prop_tuner: TunableParam = TunableParam.from_config_entry(select_prop)
+
+        # Keep tabs on a backing instance for later user
+        self.backing_rfe: RFE | None = None
+
+    @classmethod
+    def from_config(cls, config: dict, logger: Logger = Logger.root) -> Self:
+        return cls(config=config, logger=logger)
+
+    def tune(self, trial: Trial):
+        self.prop_tuner.tune(trial)
+        # Generate the new backing model based on this setup
+        new_lor = LogisticRegression()
+        self.backing_rfe = RFE(estimator=new_lor, n_features_to_select=self.prop_tuner.value)
+
+    def tunable_params(self) -> list[TunableParam]:
+        return [self.prop_tuner]
+
+    def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
+        if isinstance(x, MultiFeatureMixin):
+            # Denote the type of our inputs so type hinting doesn't suck
+            x: MultiFeatureMixin | BaseDataManager
+
+            # If the number of features selected would be 0, make it 1 instead
+            if self.prop_tuner.value * x.as_array().shape[1] < 1:
+                self.backing_rfe.n_features_to_select = 1
+
+            # Calculate and regenerate the features in the training set
+            self.backing_rfe.fit(x.as_array(), np.ravel(y.as_array())) # Ravel prevents some warning spam
+            selected_features = self.backing_rfe.get_feature_names_out(x.features())
+
+            # Select only the features
+            x_out: BaseDataManager | MultiFeatureMixin = x.get_features(selected_features)
+
+        # Otherwise, raise an error, as it makes no sense to feature select a single feature!
+        else:
+            raise ValueError("Feature selection cannot be run on a dataset with only 1 feature!")
+        return x_out
+
+    def run_fitted(self,
+               x_train: BaseDataManager,
+               x_test: Optional[BaseDataManager],
+               y_train: Optional[BaseDataManager] = None,
+               y_test: Optional[BaseDataManager] = None
+           ) -> (BaseDataManager, BaseDataManager):
+        if isinstance(x_train, MultiFeatureMixin):
+            # Denote the type of our inputs so type hinting doesn't suck
+            x_train: MultiFeatureMixin | BaseDataManager
+            x_test: MultiFeatureMixin | BaseDataManager
+
+            # Run the fitted analysis first
+            train_out = self.run(x_train, y_train)
+            selected_features = self.backing_rfe.get_feature_names_out(x_train.features())
+
+            # Use the same set of features to filter the x_test set
+            test_out = x_test.get_features(selected_features)
+
+        # Otherwise, report an error, as we can't dimensionally reduce a single dimension!
+        else:
+            raise ValueError("Dimensionality reduction cannot be run on a dataset with only 1 dimension!")
+        return train_out, test_out

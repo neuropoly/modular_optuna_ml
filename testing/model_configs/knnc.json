@@ -4,7 +4,7 @@
   "parameters": {
     "weights": {
       "type": "categorical",
-      "choices": ["uniform", "distance"]
+      "choices": ["uniform"]
     },
     "p": {
       "label": "knnc_p",

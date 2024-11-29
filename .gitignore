@@ -4,3 +4,5 @@
 /testing/private/*
 /.idea/*
 
+/sct_processing/softseg_data/*.tsv
+/sct_processing/results.db

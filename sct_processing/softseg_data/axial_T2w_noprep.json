@@ -1,0 +1,83 @@
+{
+  "label": "SoftSegT2AxialNoPrep",
+  "format": "tabular",
+  "data_source": "/home/kalum.ost/classic_ml_reloaded/sct_processing/softseg_data/axial_T2w.tsv",
+  "separator": "\t",
+  "pre_split_hooks": [
+    {
+      "type": "drop_features_explicit",
+      "features": [
+        "GRP",
+        "acq",
+        "weight",
+        "Site",
+        "Surgical",
+        "Number of Surgeries",
+        "Treatment Plan",
+        "Followup: 12 month",
+        "Followup: 24 month",
+        "Followup: 60 month",
+        "Date of Assessment",
+        "CSM Duration",
+        "Work Status",
+        "mJOA 12 months"
+      ]
+    },
+    {
+      "type": "feature_drop_null",
+      "threshold": 0.5
+    },
+    {
+      "type": "sample_drop_null",
+      "threshold": 0.5
+    }
+  ],
+  "post_split_hooks": [
+    {
+      "type": "imputation_simple",
+      "strategy": "most_frequent",
+      "features": [
+        "EQ5D: Anxiety/Depression",
+        "EQ5D: Mobility",
+        "EQ5D: Pain/Discomfort",
+        "EQ5D: Self-Care",
+        "EQ5D: Total",
+        "EQ5D: Usual Activities",
+        "Sex",
+        "Symptom Duration",
+        "Work Status (Category)",
+        "Comorbidities: Nicotine (Smoking)",
+        "Comorbidities: Nicotine (Smokeless)",
+        "Comorbidities: Nicotine (Patches)",
+        "Comorbidities: Nicotine (Recent Quit)"
+      ]
+    },
+    {
+      "type": "one_hot_encode",
+      "features": [
+        "EQ5D: Anxiety/Depression",
+        "EQ5D: Mobility",
+        "EQ5D: Pain/Discomfort",
+        "EQ5D: Self-Care",
+        "EQ5D: Usual Activities",
+        "Sex",
+        "Symptom Duration",
+        "Work Status (Category)",
+        "Comorbidities: Nicotine (Smoking)",
+        "Comorbidities: Nicotine (Smokeless)",
+        "Comorbidities: Nicotine (Patches)",
+        "Comorbidities: Nicotine (Recent Quit)"
+      ],
+      "max_unique_vals": 5,
+      "handle_unknown": "ignore"
+    },
+    {
+      "type": "imputation_simple",
+      "strategy": "mean"
+    },
+    {
+      "type": "standard_scaling",
+      "run_per_cross": true
+    }
+  ]
+}

@@ -20,9 +20,9 @@ fi
 
 # Generate the output values for this segmentation
 SEG_NAME="${INPUT_FILE##*/}"
-SEG_NAME="${SEG_NAME%%.*}_sciseg.nii.gz"
+SEG_NAME="${SEG_NAME%%.*}_sciseg"
 
-SEG_FILE="$OUT_FOLDER/$SEG_NAME"
+SEG_FILE="$OUT_FOLDER/$SEG_NAME.nii.gz"
 
 # Run SCI seg, a tuned version of DeepSeg, on the file
 if [ ! -f "$SEG_FILE" ]; then
@@ -31,6 +31,9 @@ else
   printf "\n"
   echo "Segmentation already exists, skipping"
 fi
+
+# Modified version of seg output to
+SEG_NAME="${SEG_NAME}_sc_seg.nii.gz"
 
 # Generate the output values for vertebral labelling
 VERT_FILE="$OUT_FOLDER/${SEG_NAME%%.*}_labeled.nii.gz"

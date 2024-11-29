@@ -104,7 +104,10 @@ class StudyManager(object):
             self.study_config.output_path.touch()
 
         # Initiate a connection w/ a 'with' clause, to ensure the connection closes when the program does
-        with sqlite3.connect(self.study_config.output_path) as con:
+        with (sqlite3.connect(
+                self.study_config.output_path,
+                timeout=60) # 60 second timeout to avoid parallel analyses from crashing out early an hour into runtime
+        as con):
             # Initiate the cursor
             cur = con.cursor()
 
@@ -198,7 +201,7 @@ class StudyManager(object):
 
         # Run the study once for each replicate
         skf_splitter = StratifiedKFold(n_splits=self.study_config.no_replicates, random_state=init_seed, shuffle=True)
-        for i, (train_idx, test_idx) in enumerate(skf_splitter.split(x.as_array(), y.as_array())):
+        for i, (train_idx, test_idx) in enumerate(skf_splitter.split(np.zeros(x.as_array().shape), y.as_array())):
             # Set up the workspace for this replicate
             s = int(replicate_seeds[i])
             np.random.seed(s)

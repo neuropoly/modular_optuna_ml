@@ -336,6 +336,6 @@ class StudyManager(object):
 
             # Calculate the metrics requested by the user at the "train" hook
             for k, v in self.train_hooks.items():
-                metric_dict[f"{k} [{i}]"] = v(model_manager, tx, ty)
+                metric_dict[f"{k} [{i}]"] = v(model_manager, vx, vy)
 
         return np.mean(objective_cross_values)

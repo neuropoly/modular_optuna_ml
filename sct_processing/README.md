@@ -66,4 +66,9 @@ The scripts, data, and analyses presented in this folder were used to generate a
        * Random Forest
        * AdaBoost
    * 175 total permutations
-     * While Issue #10 remains, this will be closer to 140 permutations, as 35 of them rely on said pre-processing method. With the random seed we chose, 150 permutations ran to completion.
+     * While Issue #10 remains, this will be closer to 140 permutations, as 35 of them rely on said pre-processing method. With the random seed we chose, 155 permutations ran to completion.
+
+## Results Interpretation
+
+See `result/README.md` for further details.
+

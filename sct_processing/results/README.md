@@ -86,3 +86,30 @@ The graphs placed within `figures/bacc_performance` were designed to help tease 
    * `max`: The peak performance observed in each set of analytical permutations which matched the criterion above, averaged with error bounds of +/- 1 standard deviation (each calculated across replicates).
    * `test_at_peak_validate`: The _testing_ performance of each analytical permutation which matched the criterion above, sampled from the protocol with the best _validation_ performance. This is averaged with error bounds of +/- 1 standard deviation (each calculated across replicates), and aims to evaluate how well a model's performance during evaluation would transfer to its performance on data it has never seen before.
      * **NOTE:** Due to many of our models overfitting during train-validation tuning (reaching exactly 100% balance accuracy), this is measure should be considered incomplete due to ties in performance being broken randomly.
+
+# Statistical Analyses
+
+## Paired Ranked Sum
+
+This statistical test will identify whether one group of samples, defined as all samples for which a given analytical variant was used, outperforms another by a significant margin. This is accomplished via a one-tailed ranked-sum test, chosen over the classic T-test as the distribution of some groupings were not normally distributed. Whether a given grouping was significantly better than another was based on p-value of 0.05, with Bonferroni multiple comparisons measure correction applied to supress the possibility false positives.
+
+## Kruskal-Wallace
+
+This statistical tests aims to identify whether there is any significant difference in performance at all between a set of groups. This is done with a two-tailed Kruskal-Wallace test, chosen over ANOVA as we do not meet its normality assumption requirement in all sample groupings. Whether this difference was significant was based on p-value of 0.05, with Bonferroni multiple comparisons measure correction applied to supress the possibility false positives.
+
+## Results Summary
+
+### Best Testing Performance by Replicate
+
+* Feature selection and pre-processing has a significant impact on a given analyses' performance, with the majority of significant paired ranked sum tests being related to models with feature pre-processing outperforming those without.
+* Likewise, analyses which used both imaging **AND** clinical datasets together outperformed those trained on imaging **OR** clinical data alone in the best-case testing performance.
+* When imaging metrics were used, models which used data derived from axially oriented sequences outperformed those with sagittally derived metrics.
+* Kruskal-Wallace showed that all varied elements of the analysis (dataset used, ML model used, imaging contrast and orientation, and data pre-processing methodology) had results which differed significantly from each other, even if they were not significantly better or worse as measured by a paired rank-sum test.
+
+### Testing at Peak Validation
+
+**_NOTE:_** Due to ties in validation performance, the results of this analysis should be taken with a grain of salt, as the testing performance in these cases is effectively chosen at random (namely, by its order) rather than average. See Issue #16 for discussion on the matter.
+
+* Possibly due to the aforementioned bug, of the significant effects observed prior, only the axial orientation outperforming the sagittal orientation was found to be significant in this context as well.
+* Instead, we see that Logistic Regression based models begin to outperform over their peers (namely the two ensemble methods, Random Forest and AdaBoost), and feature pre-processing becomes inhibitory (likely, in part, due to the prior; Logistic Regression itself as feature selection capabilities, making it redundant).
+* Kruskal-Wallace showed that all varied elements of the analysis **EXCEPT** the imaging contrast had results which differed significantly from each other, even if they were not significantly better or worse as measured by a paired rank-sum test.

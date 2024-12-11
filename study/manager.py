@@ -104,7 +104,10 @@ class StudyManager(object):
             self.study_config.output_path.touch()
 
         # Initiate a connection w/ a 'with' clause, to ensure the connection closes when the program does
-        with sqlite3.connect(self.study_config.output_path) as con:
+        with (sqlite3.connect(
+                self.study_config.output_path,
+                timeout=60) # 60 second timeout to avoid parallel analyses from crashing out early an hour into runtime
+        as con):
             # Initiate the cursor
             cur = con.cursor()
 
@@ -198,7 +201,7 @@ class StudyManager(object):
 
         # Run the study once for each replicate
         skf_splitter = StratifiedKFold(n_splits=self.study_config.no_replicates, random_state=init_seed, shuffle=True)
-        for i, (train_idx, test_idx) in enumerate(skf_splitter.split(x.as_array(), y.as_array())):
+        for i, (train_idx, test_idx) in enumerate(skf_splitter.split(np.zeros(x.as_array().shape), y.as_array())):
             # Set up the workspace for this replicate
             s = int(replicate_seeds[i])
             np.random.seed(s)
@@ -236,10 +239,12 @@ class StudyManager(object):
 
     @staticmethod
     def train_test_split(test_idx, train_idx, x, y):
-        # Split the data using the indices provided
-        train_x, test_x = x.split(train_idx, test_idx, is_cross=False)
-        # Naive split is required here to avoid running post-split processing
+        # Naive split is required for target values to avoid running post-split processing
         train_y, test_y = y[train_idx], y[test_idx]
+
+        # Split the data using the indices provided
+        train_x, test_x = x.split(train_idx, test_idx, train_y, test_y, is_cross=False)
+
         return test_x, test_y, train_x, train_y
 
     def run_replicate(
@@ -267,7 +272,7 @@ class StudyManager(object):
             x.tune(trial)
 
             # Run any pre-split pre-processing
-            prepped_x = x.pre_split(is_cross=False)
+            prepped_x = x.pre_split(target=y, is_cross=False)
 
             # Split the data into the composite components
             test_x, test_y, train_x, train_y = self.train_test_split(test_idx, train_idx, prepped_x, y)
@@ -306,7 +311,7 @@ class StudyManager(object):
         model_manager = self.model_config.model_manager
 
         # Run any pre-split preparations the dataset has again
-        prepped_x = x.pre_split(is_cross=True)
+        prepped_x = x.pre_split(target=y, is_cross=True)
 
         # Track the objective values for each cross
         objective_cross_values = np.zeros(self.study_config.no_crosses)
@@ -319,8 +324,8 @@ class StudyManager(object):
             model_manager.tune(trial)
 
             # Split the components along the desired axes
-            tx, vx = prepped_x.split(ti, vi, is_cross=True)
             ty, vy = y[ti], y[vi]
+            tx, vx = prepped_x.split(ti, vi, ty, vy, is_cross=True)
 
             # Generate and fit a new instance of the model to the training subset
             rty = np.ravel(ty.as_array())
@@ -331,6 +336,6 @@ class StudyManager(object):
 
             # Calculate the metrics requested by the user at the "train" hook
             for k, v in self.train_hooks.items():
-                metric_dict[f"{k} [{i}]"] = v(model_manager, tx, ty)
+                metric_dict[f"{k} [{i}]"] = v(model_manager, vx, vy)
 
         return np.mean(objective_cross_values)

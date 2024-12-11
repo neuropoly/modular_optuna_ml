@@ -161,7 +161,7 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
     def as_array(self) -> np.ndarray:
         return self.data.to_numpy()
 
-    def pre_split(self, is_cross: bool) -> Self:
+    def pre_split(self, is_cross: bool, target: Self = None) -> Self:
         new_instance = self
         for hook in self.pre_split_hooks:
             # Skip a hook if it has specified it should only be run during a hook point we are not in
@@ -171,12 +171,19 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
                 continue
 
             # If not, apply the hook to the data
-            new_instance = hook.run(new_instance)
+            new_instance = hook.run(new_instance, target)
 
         # Return the results
         return new_instance
 
-    def split(self, train_idx, test_idx, is_cross: bool) -> (Self, Self):
+    def split(
+            self,
+            train_idx: np.ndarray,
+            test_idx: np.ndarray,
+            train_target: Self,
+            test_target: Self,
+            is_cross: bool = True
+    ) -> (Self, Self):
         # Initial split and instance setup
         train_instance = self.shallow_copy()
         train_instance._data = self.data.iloc[train_idx, :]
@@ -193,11 +200,13 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
 
             # If the hook needs to be fit, use the training set to do so
             if isinstance(hook, FittedDataHook):
-                train_instance, test_instance = hook.run_fitted(train_instance, test_instance)
+                train_instance, test_instance = hook.run_fitted(
+                    train_instance, test_instance, train_target, test_target
+                )
             # Otherwise, just apply the hook to both instances independently
             else:
-                train_instance = hook.run(train_instance)
-                test_instance = hook.run(test_instance)
+                train_instance = hook.run(train_instance, train_target)
+                test_instance = hook.run(test_instance, test_target)
 
         # Return the resulting split
         return train_instance, test_instance

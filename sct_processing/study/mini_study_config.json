@@ -1,0 +1,24 @@
+{
+  "label": "dcm_classic_ml_mini",
+  "target": "Recovery Class",
+  "random_seed": 71544,
+  "no_replicates": 2,
+  "no_crosses": 2,
+  "no_trials": 2,
+  "objective": "log_loss",
+  "metrics": {
+    "validate": [
+      "balanced_accuracy",
+      "roc_auc",
+      "log_loss"
+    ],
+    "test": [
+      "balanced_accuracy",
+      "roc_auc",
+      "log_loss",
+      "importance_by_permutation"
+    ]
+  },
+  "track_params": true,
+  "output_path": "sct_processing/results.db"
+}

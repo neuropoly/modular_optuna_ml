@@ -113,3 +113,21 @@ This statistical tests aims to identify whether there is any significant differe
 * Possibly due to the aforementioned bug, of the significant effects observed prior, only the axial orientation outperforming the sagittal orientation was found to be significant in this context as well.
 * Instead, we see that Logistic Regression based models begin to outperform over their peers (namely the two ensemble methods, Random Forest and AdaBoost), and feature pre-processing becomes inhibitory (likely, in part, due to the prior; Logistic Regression itself as feature selection capabilities, making it redundant).
 * Kruskal-Wallace showed that all varied elements of the analysis **EXCEPT** the imaging contrast had results which differed significantly from each other, even if they were not significantly better or worse as measured by a paired rank-sum test.
+
+# Feature Importance
+
+## Permutation Based
+
+The 10 most impactful features, on average, for models with both clinical and imaging-derived features were:
+
+1. Age
+2. mJOA (Initial Pre-Surgery)
+3. Mean Cross-Sectional Area of Spinal Cord at Vertebra 2
+4. Body Mass Index
+5. Orientation of Spinal Cord at Vertebra 3
+6. Mean Cross-Sectional Area of Spinal Cord at Vertebra 3
+7. Standard Deviation of Eccentricity of Spinal Cord at Vertebra 5
+8. Average Eccentricity of Spinal Cord at Vertebra 4
+9. Mean AP Diameter of Spinal Cord at Vertebra 2
+10. Standard Deviation of RL Angle of Spinal Cord at Vertebra 4
+

@@ -25,6 +25,24 @@
     }, {
       "type": "standard_scaling",
       "run_per_cross": true
+    },
+    {
+      "type": "principal_component_analysis",
+      "proportion": {
+        "label": "pca_component_proportion",
+        "type": "float",
+        "low": 0.1,
+        "high": 0.2
+      }
+    },
+    {
+      "type": "recursive_feature_elimination",
+      "proportion": {
+        "label": "rfe_feature_proportion",
+        "type": "float",
+        "low": 0.1,
+        "high": 0.2
+      }
     }
   ]
 }

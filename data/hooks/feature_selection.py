@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from optuna import Trial
 from sklearn.decomposition import PCA
+from sklearn.exceptions import NotFittedError
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 
@@ -192,6 +193,9 @@ class RecursiveFeatureElimination(Tunable, FittedDataHook):
         # Keep tabs on a backing instance for later user
         self.backing_rfe: RFE | None = None
 
+        # Keep track of the backing features independent of the RFE instance to avoid some code smells later
+        self.selected_features = None
+
     @classmethod
     def from_config(cls, config: dict, logger: Logger = Logger.root) -> Self:
         return cls(config=config, logger=logger)
@@ -210,20 +214,28 @@ class RecursiveFeatureElimination(Tunable, FittedDataHook):
             # Denote the type of our inputs so type hinting doesn't suck
             x: MultiFeatureMixin | BaseDataManager
 
+            # If x contains only one feature already, just return that feature, as RFE has a stroke otherwise
+            if x.n_features() == 1:
+                self.logger.warning("Only one feature in the dataset was found, making RFE redundant. "
+                                    "Original (unmodified) dataset returned instead.")
+                self.selected_features = x.features()
+                return x
+
             # If the number of features selected would be 0, make it 1 instead
-            if self.prop_tuner.value * x.as_array().shape[1] < 1:
+            if self.prop_tuner.value * x.n_features() < 1:
                 self.backing_rfe.n_features_to_select = 1
 
             # Calculate and regenerate the features in the training set
             self.backing_rfe.fit(x.as_array(), np.ravel(y.as_array())) # Ravel prevents some warning spam
-            selected_features = self.backing_rfe.get_feature_names_out(x.features())
+            self.selected_features = self.backing_rfe.get_feature_names_out(x.features())
 
             # Select only the features
-            x_out: BaseDataManager | MultiFeatureMixin = x.get_features(selected_features)
+            x_out: BaseDataManager | MultiFeatureMixin = x.get_features(self.selected_features)
 
         # Otherwise, raise an error, as it makes no sense to feature select a single feature!
         else:
-            raise ValueError("Feature selection cannot be run on a dataset with only 1 feature!")
+            raise ValueError(f"The RFE data hook currently only supports multi-feature datasets; "
+                             f"received {type(x)} instead")
         return x_out
 
     def run_fitted(self,
@@ -239,10 +251,10 @@ class RecursiveFeatureElimination(Tunable, FittedDataHook):
 
             # Run the fitted analysis first
             train_out = self.run(x_train, y_train)
-            selected_features = self.backing_rfe.get_feature_names_out(x_train.features())
 
             # Use the same set of features to filter the x_test set
-            test_out = x_test.get_features(selected_features)
+            test_out = x_test.get_features(self.selected_features)
+
 
         # Otherwise, report an error, as we can't dimensionally reduce a single dimension!
         else:

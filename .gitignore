@@ -8,6 +8,9 @@
 /sct_processing/softseg_data/*.tsv
 /sct_processing/softseg_data/*.csv
 /sct_processing/softseg_data/*.json
+/sct_processing/deepseg_data/*.tsv
+/sct_processing/deepseg_data/*.csv
+/sct_processing/deepseg_data/*.json
 /sct_processing/results/figures/
 /sct_processing/participants.tsv
 /sct_processing/results.db
@@ -15,3 +18,4 @@
 # Python notebook checkpoints of questionable utility
 /sct_processing/results/.ipynb_checkpoints/
 /sct_processing/softseg_data/.ipynb_checkpoints/
+/sct_processing/deepseg_data/.ipynb_checkpoints/

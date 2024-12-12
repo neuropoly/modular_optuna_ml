@@ -20,13 +20,13 @@ fi
 
 # Generate the output values for this segmentation
 SEG_NAME="${INPUT_FILE##*/}"
-SEG_NAME="${SEG_NAME%%.*}_deepsegv2.nii.gz"
+SEG_NAME="${SEG_NAME%%.*}_softseg.nii.gz"
 
 SEG_FILE="$OUT_FOLDER/$SEG_NAME"
 
-# Run DeepSeg (contrast agnostic segmentation) on the file
+# Run SoftSeg (contrast agnostic segmentation) on the file
 if [ ! -f "$SEG_FILE" ]; then
-  sct_deepseg -i "$INPUT_FILE" -o "$SEG_FILE" -task "seg_sc_contrast_agnostic"
+  sct_deepseg -i "$INPUT_FILE" -o "$SEG_FILE" -task "seg_sc_contrast_agnostic" -thr 0
 else
   printf "\n"
   echo "Segmentation already exists, skipping"
@@ -44,7 +44,7 @@ else
 fi
 
 # Generate the output values for segmentation processing
-PER_VERT_OUT_NAME="deepsegv2_vertebrae_metrics.csv"
+PER_VERT_OUT_NAME="softseg_vertebrae_metrics.csv"
 PER_VERT_OUT_FILE="$OUT_FOLDER/$PER_VERT_OUT_NAME"
 
 # Use those labels alongside the segmentation to generate per-vertebrae metrics

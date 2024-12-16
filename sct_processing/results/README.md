@@ -60,7 +60,7 @@ Most patients were either actively working (labelled as `W`) or were retired, se
 
 The graphs placed within `figures/bacc_performance` were designed to help tease out any trends in performance across Optuna trials for various analytical protocols in the study. These plots are stratified in two major ways
 
-1. Protocol Variant
+1. **_Protocol Variant:_**
    * `dataset`: Plot stratified by what set of features were used during model training 
      * `img`: Imaging only
      * `clinical`: Clinical metrics only
@@ -80,18 +80,16 @@ The graphs placed within `figures/bacc_performance` were designed to help tease 
      * `KNNC`: K-Nearest Neighbor Classifiers, tested with various numbers of neighbors and regularization.
      * `SupportVectorClassifier`: Support Vector Machines, tested with various kernels.
      * `LogisticRegression`: Logistic Regressions, testing with various forms and degrees of regularization. 
-2. Metric Assessed
-   * `avg`: The average _performance value at testing_ across all replicates and analytical permutations which matched the criterion above, with error bounds of +/- 1 standard deviation.
-   * `weighted_avg`: The same as prior, except how much a given trial's value contributes to the mean is weighted by its _performance value at validation_. This helps supress high testing performance samples which occur by chance (when validation performance is low).  
-   * `max`: The peak performance observed in each set of analytical permutations which matched the criterion above, averaged with error bounds of +/- 1 standard deviation (each calculated across replicates).
-   * `test_at_peak_validate`: The _testing_ performance of each analytical permutation which matched the criterion above, sampled from the protocol with the best _validation_ performance. This is averaged with error bounds of +/- 1 standard deviation (each calculated across replicates), and aims to evaluate how well a model's performance during evaluation would transfer to its performance on data it has never seen before.
-     * **NOTE:** Due to many of our models overfitting during train-validation tuning (reaching exactly 100% balance accuracy), this is measure should be considered incomplete due to ties in performance being broken randomly.
+2. **_Metric Assessed:_**
+   * **Balanced Accuracy (Average Test)**: The average performance on the testing dataset at each trial point.
+   * **Balanced Accuracy (Test @ Peak Validate)**: The model's average performance on the testing set across replicates, sampled by selecting the analysis permutation with the highest performance on the validation set.
+   * **Balanced Accuracy (Test weighted by Validate)**: The model's performance on the testing set weighted average using the performance on the validation set as the weighted.
 
 # Statistical Analyses
 
 ## Paired Ranked Sum
 
-This statistical test will identify whether one group of samples, defined as all samples for which a given analytical variant was used, outperforms another by a significant margin. This is accomplished via a one-tailed ranked-sum test, chosen over the classic T-test as the distribution of some groupings were not normally distributed. Whether a given grouping was significantly better than another was based on p-value of 0.05, with Bonferroni multiple comparisons measure correction applied to supress the possibility false positives.
+This statistical test will identify whether one group of samples, defined as all samples for which a given analytical variant was used, outperforms another by a significant margin. This is accomplished via a one-tailed ranked-sum test, chosen over the classic T-test as the distribution of some groupings were not normally distributed. Whether a given grouping was significantly better than another was based on p-value of 0.05, with Bonferroni and Benjaminini-Yekutieli multiple comparisons measure correction applied to supress the possibility false positives.
 
 ## Kruskal-Wallace
 

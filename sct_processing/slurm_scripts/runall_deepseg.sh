@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task 16
 #SBATCH --time 12:00:00
 #SBATCH --partition=cpu2023,cpu2022,cpu2021,cpu2019
-#SBATCH --array=0-149 # <-- 5 model permutations * 30 dataset permutations, 0 indexed, inclusive
+#SBATCH --array=0-174 # <-- 5 model permutations * 35 dataset permutations (5 img-only), 0 indexed, inclusive
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=kalum.ost
 
@@ -22,11 +22,11 @@ OLD_DIR=$PWD
 cd ~/classic_ml_reloaded/sct_processing
 
 # Get the number of data files, as its the basis of our modulo
-N_DATA_CONFIGS=`ls softseg_data/*.json | wc -l`
+N_DATA_CONFIGS=`ls deepseg_data/*.json | wc -l`
 
 # Get the data file to use via modulo
 DATA_OFFSET=$(($SLURM_ARRAY_TASK_ID % $N_DATA_CONFIGS + 1))
-DATA_FILE=`ls softseg_data/*.json | head -n $DATA_OFFSET | tail -n 1`
+DATA_FILE=`ls deepseg_data/*.json | head -n $DATA_OFFSET | tail -n 1`
 
 # Get the model file to use via divide
 MODEL_IDX=$(($SLURM_ARRAY_TASK_ID / $N_DATA_CONFIGS + 1))

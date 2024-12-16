@@ -60,7 +60,7 @@ Most patients were either actively working (labelled as `W`) or were retired, se
 
 The graphs placed within `figures/bacc_performance` were designed to help tease out any trends in performance across Optuna trials for various analytical protocols in the study. These plots are stratified in two major ways
 
-1. Protocol Variant
+1. **_Protocol Variant:_**
    * `dataset`: Plot stratified by what set of features were used during model training 
      * `img`: Imaging only
      * `clinical`: Clinical metrics only
@@ -80,43 +80,60 @@ The graphs placed within `figures/bacc_performance` were designed to help tease 
      * `KNNC`: K-Nearest Neighbor Classifiers, tested with various numbers of neighbors and regularization.
      * `SupportVectorClassifier`: Support Vector Machines, tested with various kernels.
      * `LogisticRegression`: Logistic Regressions, testing with various forms and degrees of regularization. 
-2. Metric Assessed
-   * `avg`: The average _performance value at testing_ across all replicates and analytical permutations which matched the criterion above, with error bounds of +/- 1 standard deviation.
-   * `weighted_avg`: The same as prior, except how much a given trial's value contributes to the mean is weighted by its _performance value at validation_. This helps supress high testing performance samples which occur by chance (when validation performance is low).  
-   * `max`: The peak performance observed in each set of analytical permutations which matched the criterion above, averaged with error bounds of +/- 1 standard deviation (each calculated across replicates).
-   * `test_at_peak_validate`: The _testing_ performance of each analytical permutation which matched the criterion above, sampled from the protocol with the best _validation_ performance. This is averaged with error bounds of +/- 1 standard deviation (each calculated across replicates), and aims to evaluate how well a model's performance during evaluation would transfer to its performance on data it has never seen before.
-     * **NOTE:** Due to many of our models overfitting during train-validation tuning (reaching exactly 100% balance accuracy), this is measure should be considered incomplete due to ties in performance being broken randomly.
+2. **_Metric Assessed:_**
+   * **Balanced Accuracy (Average Test)**: The average performance on the testing dataset at each trial point.
+   * **Balanced Accuracy (Test @ Peak Validate)**: The model's average performance on the testing set across replicates, sampled by selecting the analysis permutation with the highest performance on the validation set.
+   * **Balanced Accuracy (Test weighted by Validate)**: The model's performance on the testing set weighted average using the performance on the validation set as the weighted.
 
 # Statistical Analyses
 
 ## Paired Ranked Sum
 
-This statistical test will identify whether one group of samples, defined as all samples for which a given analytical variant was used, outperforms another by a significant margin. This is accomplished via a one-tailed ranked-sum test, chosen over the classic T-test as the distribution of some groupings were not normally distributed. Whether a given grouping was significantly better than another was based on p-value of 0.05, with Bonferroni multiple comparisons measure correction applied to supress the possibility false positives.
+This statistical test will identify whether one group of samples, defined as all samples for which a given analytical variant was used, outperforms another by a significant margin. This is accomplished via a one-tailed ranked-sum test, chosen over the classic T-test as the distribution of some groupings were not normally distributed. Whether a given grouping was significantly better than another was based on p-value of 0.05, with Bonferroni and Benjaminini-Yekutieli multiple comparisons measure correction applied to supress the possibility false positives.
 
 ## Kruskal-Wallace
 
 This statistical tests aims to identify whether there is any significant difference in performance at all between a set of groups. This is done with a two-tailed Kruskal-Wallace test, chosen over ANOVA as we do not meet its normality assumption requirement in all sample groupings. Whether this difference was significant was based on p-value of 0.05, with Bonferroni multiple comparisons measure correction applied to supress the possibility false positives.
 
-## Results Summary
+# Results Summary
 
-### Best Testing Performance by Replicate
+## Testing at Peak Validation
 
-* Feature selection and pre-processing has a significant impact on a given analyses' performance, with the majority of significant paired ranked sum tests being related to models with feature pre-processing outperforming those without.
-* Likewise, analyses which used both imaging **AND** clinical datasets together outperformed those trained on imaging **OR** clinical data alone in the best-case testing performance.
-* When imaging metrics were used, models which used data derived from axially oriented sequences outperformed those with sagittally derived metrics.
-* Kruskal-Wallace showed that all varied elements of the analysis (dataset used, ML model used, imaging contrast and orientation, and data pre-processing methodology) had results which differed significantly from each other, even if they were not significantly better or worse as measured by a paired rank-sum test.
+When allowing for ties in performance:
 
-### Testing at Peak Validation
+* When selecting testing performance at peak validation (i.e. the model most likely to be selected based on human intuition), the following was observed:
+  * RFE feature pre-processing applied without PCA out performances most of its alternatives, with no feature pre-processing being the next best choice.
+  * Model's trained on axially oriented MRI sequences outperform those trained on sagittally oriented ones. Likewise, using T2-weighted MRI sequences provides a significant performance boost over using T1-weighted sequences.
+  * Using both clinical and imaging metrics together results in better performance than using one or the other subset alone.
+  * Using the DeepSeg algorithm (binary segmentation) to process the MRI sequences provides a significant performance boost over using the SoftSeg algorithm (non-binary segmentation).
+  * Analyses using Logistic Regression outperformed those trained on every other model type tested, with Random Forest Classifiers being the runner-up
+  * Kruskal-Wallace showed that all variable elements of the analysis had results which differed significantly from each other, even if they were not significantly better or worse as measured by the prior paired rank-sum test.
+* When selecting testing performance at the optimal objective function value (i.e. the model most likely to be selected based on Optuna's internal selection criterion), the following was observed:
+  * RFE used without PCA continues to outperform alternatives by a significant margin
+  * Models trained on axially oriented MRI sequences continue to outperform those trained on sagittally oriented ones. 
+  * Models trained on T2-weighted MRI sequences continue to outperform those trained on T1-weighted sequences.
+  * Using the full dataset only provides a significant performance boost over using imaging alone, with the performance difference between clinical and full no longer being significant
+  * Models using DeepSeg-derived metrics continue to outperform those trained using SoftSeg-derived metrics
+  * Logistic Regression based analyses outperform only KNN and AdaBoost based models, and are no longer the clear choice above all others
+  * No change in Kruskal-Wallace, though the segmentation algorithm is less significant than before
 
-**_NOTE:_** Due to ties in validation performance, the results of this analysis should be taken with a grain of salt, as the testing performance in these cases is effectively chosen at random (namely, by its order) rather than average. See Issue #16 for discussion on the matter.
+When filtering out entries which have a very large proportion of ties (likely indicating overfitting during training, with ties of 100% balanced accuracy at validation being common)
 
-* Possibly due to the aforementioned bug, of the significant effects observed prior, only the axial orientation outperforming the sagittal orientation was found to be significant in this context as well.
-* Instead, we see that Logistic Regression based models begin to outperform over their peers (namely the two ensemble methods, Random Forest and AdaBoost), and feature pre-processing becomes inhibitory (likely, in part, due to the prior; Logistic Regression itself as feature selection capabilities, making it redundant).
-* Kruskal-Wallace showed that all varied elements of the analysis **EXCEPT** the imaging contrast had results which differed significantly from each other, even if they were not significantly better or worse as measured by a paired rank-sum test.
+* When selecting testing performance at peak validation (i.e. the model most likely to be selected based on human intuition), the following differences from prior were observed:
+  * Logistic Regression no longer outperforms every other model type by a significant margin
+  * DeepSeg-derived imaging metrics do not provide as significant a boost to performance over SoftSeg as they did prior
+  * Using the full dataset only provides a significant performance boost over using imaging alone, with the performance difference between clinical and full no longer being significant.
+* No ties occurred when using "objective" as the other class, making the results identical to the analyses detailed in the previous section
 
-# Feature Importance
+## Testing at Peak Objective
 
-## Permutation Based
+In contrast to the prior analysis, the choice of ML model was by far the most significant effect, with the only non-ML related performance difference which was found to be significant being model's trained on the full dataset outperforming those trained on imaging data alone. This was confirmed by Kruskal-Wallace analysis, where only the choice of ML model and dataset were found to significantly change the performance of the analysis.
+
+No ties were observed in this context, making the results between high tie-excluded and tie-inclusive filters identical 
+
+## Feature Importance
+
+### Permutation Based
 
 The 10 most impactful features, on average, for models with both clinical and imaging-derived features were:
 

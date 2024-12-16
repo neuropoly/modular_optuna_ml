@@ -7,7 +7,7 @@ The scripts, data, and analyses presented in this folder were used to generate a
 1. Clinical diagnostic and MRI sequences of various sequencing modalities (Sagittal T1, Sagittal T2, Axial T2) were obtained from patients across Alberta.
 2. MRI sequences were automatically segmented using the Contrast Agnostic DeepSeg algorithm provided by the Spinal Cord Toolbox (SCT) release 6.5.
 3. The resulting segmentations were then used to estimate the spinal cord morphological metrics of patients in the dataset, using the `sct_process_segmentation` script provided by SCT.
-    * Steps 2 and 3 were completed using `iterative_sct.py` and `contrast_agnostic_process.sh`
+    * Steps 2 and 3 were completed using `iterative_sct.py` and `contrast_agnostic_process.sh`, both present within `slurm_scripts`.
       * `iterative_sct.py` is a replacement for SCT's `sct_run_batch` command, set to run for every _MRI_ sequence found within a BIDS-like subject directory (rather than for each subject directory). 
         * This is an optimization for running on highly-parallel systems, as iterating by directory requires more boolean logic and error checking than doing so by file. If you have a BIDS-like dataset + a `sct_run_batch` script already, its output will work just as well.
       * `contrast_agnostic_process.sh` runs SCT's `sct_deepseg` command with the `seg_sc_contrast_agnostic` task, processing the resulting segmentation to produce estimates spinal-cord morphometrics from the `C2` to `C6` level of the spine.

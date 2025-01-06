@@ -100,6 +100,8 @@ class StudyManager(object):
     """ DB Management """
     def init_db(self):
         # Create the requested database file if it does not already exist
+        if not self.study_config.output_path.parent.exists():
+            self.study_config.output_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.study_config.output_path.exists():
             self.study_config.output_path.touch()
 

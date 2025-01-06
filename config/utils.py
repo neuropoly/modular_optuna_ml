@@ -18,11 +18,9 @@ def load_json_with_validation(json_path: Path, logger: Logger = Logger.root) -> 
     """
     # Check to confirm the file exists and is a valid file
     if not json_path.exists():
-        logger.error(f"JSON configuration file '{json_path}' was not found; terminating")
-        raise FileNotFoundError()
+        raise FileNotFoundError(f"JSON configuration file '{json_path}' was not found; terminating")
     if not json_path.is_file():
-        logger.error(f"JSON configuration file '{json_path}' was a directory, not a file; terminating")
-        raise TypeError()
+        raise TypeError(f"JSON configuration file '{json_path}' was a directory, not a file; terminating")
     # Attempt to load the files contents w/ JSON
     with open(json_path) as json_file:
         try:
@@ -99,8 +97,7 @@ def is_int(logger: Logger) -> Check:
     """Confirms the value is an integer"""
     def check(k: str, v):
         if type(v) is not int:
-            logger.error(f"'{k}' specified in the configuration file was not an integer; terminating")
-            raise TypeError
+            raise TypeError(f"'{k}' specified in the configuration file was not an integer; terminating")
         return v
     return check
 
@@ -109,8 +106,7 @@ def is_float(logger: Logger) -> Check:
     """Confirms the value is a float"""
     def check(k: str, v):
         if type(v) is not float:
-            logger.error(f"'{k}' specified in the configuration file was not a float; terminating")
-            raise TypeError
+            raise TypeError(f"'{k}' specified in the configuration file was not a float; terminating")
         return v
     return check
 
@@ -119,8 +115,7 @@ def is_list(logger: Logger) -> Check:
     """Confirms the value is a list"""
     def check(k: str, v):
         if type(v) is not list:
-            logger.error(f"'{k}' specified in the configuration file was not a list; terminating")
-            raise TypeError
+            raise TypeError(f"'{k}' specified in the configuration file was not a list; terminating")
         return v
 
     return check
@@ -129,8 +124,7 @@ def is_dict(logger: Logger) -> Check:
     """Confirms the value is a dictionary"""
     def check(k: str, v):
         if type(v) is not dict:
-            logger.error(f"'{k}' specified in the configuration file was not a dictionary; terminating")
-            raise TypeError
+            raise TypeError(f"'{k}' specified in the configuration file was not a dictionary; terminating")
         return v
 
     return check
@@ -140,11 +134,9 @@ def is_file(logger: Logger) -> Check:
     def check(k: str, v):
         file_path = Path(v)
         if not file_path.exists():
-            logger.error(f"The path specified in '{k}' does not exist; terminating")
-            raise TypeError
+            raise TypeError(f"The path specified in '{k}' does not exist; terminating")
         elif not file_path.is_file():
-            logger.error(f"The path specified in '{k}' is not a file; terminating")
-            raise TypeError
+            raise TypeError(f"The path specified in '{k}' is not a file; terminating")
         return file_path
 
     return check
@@ -153,8 +145,7 @@ def is_valid_option(check_set: set, logger: Logger) -> Check:
     """Confirms a value is on of a set of options"""
     def check(k: str, v):
         if v not in check_set:
-            logger.error(f"Value of '{k}' must be one of the following: {check_set}. Terminating")
-            raise TypeError
+            raise TypeError(f"Value of '{k}' must be one of the following: {check_set}. Terminating")
         return v
     return check
 
@@ -164,9 +155,8 @@ def all_valid_options(check_set: set, logger: Logger) -> Check:
         v = list(v)
         invalid_choices = [x for x in v if x not in check_set]
         if len(invalid_choices) > 0:
-            logger.error(f"All values contained in '{k}' must be one of the following: {check_set}. "
-                         f"Invalid values were {invalid_choices}. Terminating")
-            raise ValueError
+            raise ValueError(f"All values contained in '{k}' must be one of the following: {check_set}. "
+                             f"Invalid values were {invalid_choices}. Terminating")
         return v
 
     return check

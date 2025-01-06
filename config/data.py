@@ -31,10 +31,7 @@ class DataConfig(object):
         json_data = load_json_with_validation(json_file)
 
         if type(json_data) is not dict:
-            logger.error(
-                f"JSON should be formatted as a dictionary, was formatted as a {type(json_data)}; terminating"
-            )
-            raise TypeError
+            raise TypeError(f"JSON should be formatted as a dictionary, was formatted as a {type(json_data)}; terminating")
 
         return DataConfig(json_data, logger)
 

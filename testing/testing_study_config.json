@@ -16,6 +16,9 @@
     "test": [
       "balanced_accuracy",
       "log_loss",
+      "sk_precision_weighted_avg",
+      "sk_recall_weighted_avg",
+      "sk_f1_weighted_avg",
       "correct_samples",
       "incorrect_samples"
     ]

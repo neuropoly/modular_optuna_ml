@@ -3,7 +3,7 @@ Metric-reporting closures for use in this framework.
 """
 import numpy as np
 from sklearn.inspection import permutation_importance
-from sklearn.metrics import balanced_accuracy_score, log_loss, roc_auc_score
+from sklearn.metrics import balanced_accuracy_score, log_loss, roc_auc_score, precision_score, recall_score, f1_score
 
 from data import BaseDataManager
 from data.mixins import MultiFeatureMixin
@@ -27,6 +27,22 @@ def sk_roc_auc(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManag
         raise ValueError(f"ROC AUC can only be calculated for binary classification tasks; found {py.shape[1]} classes")
     py = py[:, 1]  # No idea why it's always the second class' value, but it is
     return roc_auc_score(y.as_array(), py)
+
+def sk_precision_weighted_avg(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
+    # Precision, weighted average
+    py = manager.predict(x.as_array())
+    return precision_score(y.as_array(), py, average='weighted')
+
+def sk_recall_weighted_avg(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
+    # Recall, weighted average
+    py = manager.predict(x.as_array())
+    return recall_score(y.as_array(), py, average='weighted')
+
+def sk_f1_weighted_avg(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
+    # F1-score, weighted average
+    py = manager.predict(x.as_array())
+    return f1_score(y.as_array(), py, average='weighted')
+
 
 """ Feature Importance """
 def importance_by_permutation(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):

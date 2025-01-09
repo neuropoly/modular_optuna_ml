@@ -3,6 +3,7 @@
   "format": "tabular",
   "data_source": "./testing/iris_data/iris_testing.tsv",
   "separator": "\t",
+  "index": "id",
   "foo": "bar",
   "pre_split_hooks": [
     {

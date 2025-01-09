@@ -28,6 +28,7 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         # Default parameters
         self._data: Optional[pd.DataFrame] = None
         self._sep: str = ','
+        self._index: Optional[str] = None
 
         # Hook storing variables for later
         self.pre_split_hooks: list[DataHook] = []
@@ -44,7 +45,10 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         """
         # If our data is still just a reference to a file, load it with pandas
         if isinstance(self._data, Path):
-            self._data = pd.read_csv(self._data, sep=self._sep)
+            if self._index:
+                self._data = pd.read_csv(self._data, sep=self._sep, index_col=self._index)
+            else:
+                self._data = pd.read_csv(self._data, sep=self._sep)
         # Return the result
         return self._data
 
@@ -61,6 +65,10 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
         default_sep = default_as(new_instance._sep, logger)
         new_instance._sep = parse_data_config_entry(
             "separator", config, default_sep, as_str(logger)
+        )
+        # Track the index, if one was provided
+        new_instance._index = parse_data_config_entry(
+            "index", config, default_as(None, logger)
         )
 
         # Retrieve and parse the pre-split data hooks
@@ -117,6 +125,9 @@ class TabularDataManager(BaseDataManager, MultiFeatureMixin):
                 new_instance.tunable_hooks.append(h)
 
         return new_instance
+
+    def get_index(self) -> np.array:
+        return self.data.index.to_numpy()
 
     def get_samples(self, idx) -> Self:
         sub_df = self.data.iloc[idx, :]

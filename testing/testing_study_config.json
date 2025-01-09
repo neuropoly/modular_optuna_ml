@@ -15,7 +15,12 @@
     ],
     "test": [
       "balanced_accuracy",
-      "log_loss"
+      "log_loss",
+      "sk_precision_perclass",
+      "sk_recall_perclass",
+      "sk_f1_perclass",
+      "correct_samples",
+      "incorrect_samples"
     ]
   },
   "track_params": true,

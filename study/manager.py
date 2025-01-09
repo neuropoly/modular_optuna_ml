@@ -141,8 +141,8 @@ class StudyManager(object):
             # Track our data hooks as well, in train->validate->test order
             for k in chain(self.train_hook_keys(), self.validate_hooks.keys(), self.test_hooks.keys()):
                 # Metrics are always floating point numbers
-                self.db_cols[k] = "REAL"
-                # TODO: accomodate for non-floating types
+                self.db_cols[k] = "TEXT"
+                # TODO: Actually define the type to save DB storage space
 
             # Generate the column entries needed to define the SQL query
             sql_components = [f"'{label}' {db_type}" for label, db_type in self.db_cols.items()]

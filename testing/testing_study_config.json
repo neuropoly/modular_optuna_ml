@@ -15,7 +15,9 @@
     ],
     "test": [
       "balanced_accuracy",
-      "log_loss"
+      "log_loss",
+      "correct_samples",
+      "incorrect_samples"
     ]
   },
   "track_params": true,

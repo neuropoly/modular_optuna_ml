@@ -50,3 +50,37 @@ def importance_by_permutation(manager: OptunaModelManager, x: BaseDataManager, y
     # Convert it to a cleaned string so the SQLite backend doesn't explode
     importance_vals = str(importance_vals).replace("'", "").replace('"', '')
     return importance_vals
+
+
+""" Sample Reporting """
+def correct_samples(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
+    # Get the model's predicted values
+    y_pred = manager.predict(x.as_array())
+
+    # Generate a "mask" of the values which match across the predicted and true y values
+    y_flat = y.as_array().flatten()
+    correct_mask = y_pred == y_flat
+
+    # Pull out the sample labels which are valid for this metric hook
+    good_samples = x[correct_mask].get_index()
+
+    # Strip quotation marks from the result so the DB backend doesn't explode
+    good_samples = str(good_samples).replace("'", "").replace('"', '')
+
+    return good_samples
+
+def incorrect_samples(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
+    # Get the model's predicted values
+    y_pred = manager.predict(x.as_array())
+
+    # Generate a "mask" of the values which match across the predicted and true y values
+    y_flat = y.as_array().flatten()
+    incorrect_mask = y_pred != y_flat
+
+    # Pull out the sample labels which are valid for this metric hook
+    bad_samples = x[incorrect_mask].get_index()
+
+    # Strip quotation marks from the result so the DB backend doesn't explode
+    bad_samples = str(bad_samples).replace("'", "").replace('"', '')
+
+    return bad_samples

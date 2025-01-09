@@ -43,12 +43,21 @@ class BaseDataManager(Sequence, Tunable, ABC):
         ...
 
     @abstractmethod
+    def get_index(self) -> np.array:
+        """
+        Returns the index of the sample, as a np array.
+        Usually is the positional index in dataset, but can be something else in some cases!
+        (i.e. pandas dataframes with a set non-int index)
+        """
+        ...
+
+    @abstractmethod
     def get_samples(self, idx) -> Self:
         """
         Get a set of samples based on the index provided.
         At minimum, this should allow selecting samples by their position
         :param idx: An index dictating what samples to return
-        :return:
+        :return: The requested set of samples, as a DataManager
         """
 
     @abstractmethod

@@ -10,5 +10,7 @@ METRIC_FUNCTIONS: dict[str, MetricUpdater] = {
     "log_loss": sk_log_loss,
     "balanced_accuracy": sk_balanced_accuracy,
     "roc_auc": sk_roc_auc,
-    "importance_by_permutation": importance_by_permutation
+    "importance_by_permutation": importance_by_permutation,
+    "correct_samples": correct_samples,
+    "incorrect_samples": incorrect_samples
 }

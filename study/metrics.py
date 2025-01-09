@@ -9,6 +9,12 @@ from data import BaseDataManager
 from data.mixins import MultiFeatureMixin
 from models.base import OptunaModelManager
 
+
+""" Utilities """
+def clean_val_for_db(val):
+    return str(val).replace("'", "").replace('"', '')
+
+
 """ Supervised """
 def sk_log_loss(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
     # Log Loss
@@ -33,15 +39,51 @@ def sk_precision_weighted_avg(manager: OptunaModelManager, x: BaseDataManager, y
     py = manager.predict(x.as_array())
     return precision_score(y.as_array(), py, average='weighted')
 
+def sk_precision_perclass(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
+    # Precision, measured per class
+    py = manager.predict(x.as_array())
+    y_flat = y.as_array().flatten()
+    scores = precision_score(y_flat, py, average=None)
+    cat_set = list(set(y_flat))
+    score_dict = dict()
+    for i, v in enumerate(scores):
+        score_dict[str(cat_set[i])] = str(v)
+    score_dict = clean_val_for_db(score_dict)
+    return score_dict
+
 def sk_recall_weighted_avg(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
     # Recall, weighted average
     py = manager.predict(x.as_array())
     return recall_score(y.as_array(), py, average='weighted')
 
+def sk_recall_perclass(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
+    # Recall, measured per class
+    py = manager.predict(x.as_array())
+    y_flat = y.as_array().flatten()
+    scores = recall_score(y_flat, py, average=None)
+    cat_set = list(set(y_flat))
+    score_dict = dict()
+    for i, v in enumerate(scores):
+        score_dict[str(cat_set[i])] = str(v)
+    score_dict = clean_val_for_db(score_dict)
+    return score_dict
+
 def sk_f1_weighted_avg(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
     # F1-score, weighted average
     py = manager.predict(x.as_array())
     return f1_score(y.as_array(), py, average='weighted')
+
+def sk_f1_perclass(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
+    # Recall, measured per class
+    py = manager.predict(x.as_array())
+    y_flat = y.as_array().flatten()
+    scores = f1_score(y_flat, py, average=None)
+    cat_set = list(set(y_flat))
+    score_dict = dict()
+    for i, v in enumerate(scores):
+        score_dict[str(cat_set[i])] = str(v)
+    score_dict = clean_val_for_db(score_dict)
+    return score_dict
 
 
 """ Feature Importance """
@@ -64,7 +106,7 @@ def importance_by_permutation(manager: OptunaModelManager, x: BaseDataManager, y
     # Convert it to a string-formatted dictionary, in 'feature_name: feature_importance' form
     importance_vals = [f'{k}: {v}' for k, v in importance_vals.items()]
     # Convert it to a cleaned string so the SQLite backend doesn't explode
-    importance_vals = str(importance_vals).replace("'", "").replace('"', '')
+    importance_vals = clean_val_for_db(importance_vals)
     return importance_vals
 
 
@@ -81,7 +123,7 @@ def correct_samples(manager: OptunaModelManager, x: BaseDataManager, y: BaseData
     good_samples = x[correct_mask].get_index()
 
     # Strip quotation marks from the result so the DB backend doesn't explode
-    good_samples = str(good_samples).replace("'", "").replace('"', '')
+    good_samples = clean_val_for_db(good_samples)
 
     return good_samples
 
@@ -97,6 +139,6 @@ def incorrect_samples(manager: OptunaModelManager, x: BaseDataManager, y: BaseDa
     bad_samples = x[incorrect_mask].get_index()
 
     # Strip quotation marks from the result so the DB backend doesn't explode
-    bad_samples = str(bad_samples).replace("'", "").replace('"', '')
+    bad_samples = clean_val_for_db(bad_samples)
 
     return bad_samples

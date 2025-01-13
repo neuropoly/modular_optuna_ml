@@ -15,9 +15,7 @@ it can be easily extended to allow for the analysis of any tabular dataset.
    * `conda activate modular_optuna_ml`
    * `mamba activate modular_optuna_ml`
 4. Done!
-
-5. This only sets up the tool to be run; you will still need to create the configuration
-files for the analyses you want to run (see `testing` for an example).
+5. This only sets up the tool to be run; you will still need to create the configuration files for the analyses you want to run (see `testing` for an example).
 
 ## Running the Program
 
@@ -40,6 +38,12 @@ Once all three have been created, and you have installed all dependencies (detai
 curly brackets with the corresponding file name):
 
 `python run_ml_analysis.py -d {data_config} -m {model_config} -s {study_config}`
+
+For example, if you downloaded the source code for this package, you can run the following to test that everything was set up correctly:
+
+`python run_ml_analysis.py -d testing/iris_data/iris_config.json -m testing/model_configs/log_reg.json -s testing/testing_study_config.json`
+
+**NOTE:** By default, if a new study would overwrite the results of an old one, it will crash out instead. To force study over-writing, add the `--overwrite` flag to your command.
 
 ## Method Details
 

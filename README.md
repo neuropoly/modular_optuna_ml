@@ -7,7 +7,7 @@ it can be easily extended to allow for the analysis of any tabular dataset.
 ## Set Up
 
 1. Clone this repository to wherever you need it:
-   * `git clone https://github.com/SomeoneInParticular/dcm-classic-ml.git`
+   * `git clone https://github.com/SomeoneInParticular/modular_optuna_ml.git`
 2. Create a new Conda/Mamba environment with the dependencies needed:
    * `conda env create -f classic_ml_reloaded.yml`
    * `mamba env create -f classic_ml_reloaded.yml`

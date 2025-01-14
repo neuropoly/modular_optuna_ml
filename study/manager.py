@@ -33,13 +33,14 @@ class StudyManager(object):
     by setting the `n_replicates` and `n_crosses` to be 1.
     """
     def __init__(self, data_config: DataConfig, model_config: ModelConfig, study_config: StudyConfig,
-                 overwrite: bool, debug: bool):
+                 timeout: int, overwrite: bool, debug: bool):
         # Track each of the configs for this analysis
         self.data_config = data_config
         self.model_config = model_config
         self.study_config = study_config
 
         # Track whether to run the model in overwrite and/or debug mode
+        self.timeout = timeout
         self.overwrite = overwrite
         self.debug = debug
 
@@ -108,7 +109,7 @@ class StudyManager(object):
         # Initiate a connection w/ a 'with' clause, to ensure the connection closes when the program does
         with (sqlite3.connect(
                 self.study_config.output_path,
-                timeout=60) # 60 second timeout to avoid parallel analyses from crashing out early an hour into runtime
+                timeout=self.timeout)
         as con):
             # Initiate the cursor
             cur = con.cursor()

@@ -22,7 +22,7 @@ from config.study import StudyConfig
 from study.manager import StudyManager
 
 
-def main(data_config: Path, model_config: Path, study_config: Path, overwrite: bool, debug: bool):
+def main(data_config: Path, model_config: Path, study_config: Path, timeout: int, overwrite: bool, debug: bool):
     # Parse the configuration files
     data_config = DataConfig.from_json_file(data_config)
     model_config = ModelConfig.from_json_file(model_config)
@@ -33,6 +33,7 @@ def main(data_config: Path, model_config: Path, study_config: Path, overwrite: b
         data_config,
         model_config,
         study_config,
+        timeout=timeout,
         overwrite=overwrite,
         debug=debug
     )
@@ -59,6 +60,11 @@ if __name__ == "__main__":
     parser.add_argument(
         '-s', '--study_config', default='study_config.json', type=Path,
         help="Machine Learning Study configuration file in JSON format"
+    )
+    parser.add_argument(
+        '-to', '--timeout', default=60, type=int,
+        help="How long the program should wait for a free connection to the database before crashing out, in seconds."
+             "The more processes you have running in parallel, the longer this should be"
     )
     parser.add_argument(
         '--overwrite', action='store_true',

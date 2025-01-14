@@ -34,7 +34,7 @@ analysis, and where to save the results (currently only supports an SQLite DB ou
 example is provided in `testing/testing_study_config.json`
 
 Once all three have been created, and you have installed all dependencies (detailed in 
-`classic_ml_reloaded.yml`) simply run the following command (replacing the values within the 
+`environment.yml`) simply run the following command (replacing the values within the 
 curly brackets with the corresponding file name):
 
 `python run_ml_analysis.py -d {data_config} -m {model_config} -s {study_config}`

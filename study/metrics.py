@@ -19,7 +19,8 @@ def clean_val_for_db(val):
 def sk_log_loss(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
     # Log Loss
     py = manager.predict_proba(x.as_array())
-    return log_loss(y.as_array(), py)
+    y_labels = [f"v{i}" for i in range(py.shape[1])]
+    return log_loss(y.as_array(), py, labels=y_labels)
 
 def sk_balanced_accuracy(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
     # Balanced Accuracy

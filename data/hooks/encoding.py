@@ -4,7 +4,7 @@ from typing import Optional, Self
 
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 
 from config.utils import default_as, is_int, is_list, parse_data_config_entry
 from data import BaseDataManager
@@ -116,3 +116,76 @@ class OneHotEncoding(FittedDataHook):
         # Return the result for easy use
         self.tracked_features = tracked_features
 
+
+@registered_data_hook("ordinal_encode")
+class OrdinalEncoding(FittedDataHook):
+    def __init__(self, config: dict, **kwargs):
+        super().__init__(config, **kwargs)
+
+        # Grab an explicit list of columns, if they were defined
+        self.explicit_features = parse_data_config_entry(
+            "features", config,
+            default_as([], self.logger), is_list(self.logger)
+        )
+        # Grab the list of categories to use for each feature, if they were defined
+        categories = parse_data_config_entry(
+            "categories", config,
+            default_as(None, self.logger), is_list(self.logger)
+        )
+        if categories and not isinstance(categories[0], list):
+            categories = [categories]
+
+        # Create the underlying OrdinalEncoder
+        self.backing_encoder = OrdinalEncoder()#categories=categories)
+
+        # Keep track of which features we encode
+        self.tracked_features = None
+
+    @classmethod
+    def from_config(cls, config: dict, logger: Logger = Logger.root) -> Self:
+        return cls(config, logger=logger)
+
+    def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
+        # If this is a multi-feature dataset, select the relevant features
+        if isinstance(x, MultiFeatureMixin):
+            self.update_tracked_features(x)
+            tmp_x = x.get_features(self.tracked_features).as_array()
+
+            # Fit+transform (for training) the ordinal encoder
+            tmp_x = self.backing_encoder.fit_transform(tmp_x)
+
+            # Replace them with the new columns
+            x_out = x.set_features(self.tracked_features, tmp_x)
+        else:
+            # Not a multi-feature dataset, so encode the entire array
+            x_out = self.backing_encoder.fit_transform(x.as_array())
+
+        return x_out
+
+    def run_fitted(self,
+                   x_train: BaseDataManager,
+                   x_test: Optional[BaseDataManager],
+                   y_train: Optional[BaseDataManager] = None,
+                   y_test: Optional[BaseDataManager] = None
+                   ) -> (BaseDataManager, BaseDataManager):
+        if isinstance(x_train, MultiFeatureMixin):
+            # Fit+transform on the training data
+            train_out = self.run(x_train, y_train)
+
+            # Transform (only) the test data
+            tmp_test = x_test.get_features(self.tracked_features).as_array()
+            tmp_test = self.backing_encoder.transform(tmp_test)
+            test_out = x_test.drop_features(self.tracked_features)
+            test_out = test_out.set_features(self.tracked_features, tmp_test)
+        else:
+            # Encode the entire arrays when not using multi-feature
+            train_out = self.backing_encoder.fit_transform(x_train.as_array())
+            test_out = self.backing_encoder.transform(x_test.as_array())
+
+        return train_out, test_out
+
+    def update_tracked_features(self, x: BaseDataManager) -> None:
+        """
+        TODO: implement autodetection of features to encode
+        """
+        self.tracked_features = shallow_copy(self.explicit_features)

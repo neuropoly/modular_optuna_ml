@@ -136,7 +136,7 @@ class OrdinalEncoding(FittedDataHook):
             categories = [categories]
 
         # Create the underlying OrdinalEncoder
-        self.backing_encoder = OrdinalEncoder()#categories=categories)
+        self.backing_encoder = OrdinalEncoder(categories=categories, **config)
 
         # Keep track of which features we encode
         self.tracked_features = None

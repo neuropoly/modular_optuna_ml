@@ -20,6 +20,11 @@
       "features": ["color"]
     },
     {
+      "type": "ordinal_encode",
+      "features": ["Size Class"],
+      "categories": ["small", "medium", "large"]
+    },
+    {
       "type": "imputation_simple",
       "strategy": "mean",
       "run_per_cross": true

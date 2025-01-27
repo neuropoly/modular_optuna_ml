@@ -20,9 +20,9 @@
       "features": ["color"]
     },
     {
-      "type": "ordinal_encode",
-      "features": ["Size Class"],
-      "categories": ["small", "medium", "large"]
+      "type": "ladder_encode",
+      "feature": "size",
+      "order": ["small", "medium", "large"]
     },
     {
       "type": "imputation_simple",
@@ -31,15 +31,6 @@
     }, {
       "type": "standard_scaling",
       "run_per_cross": true
-    },
-    {
-      "type": "principal_component_analysis",
-      "proportion": {
-        "label": "pca_component_proportion",
-        "type": "float",
-        "low": 0.1,
-        "high": 0.2
-      }
     },
     {
       "type": "recursive_feature_elimination",

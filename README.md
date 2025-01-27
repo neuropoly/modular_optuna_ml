@@ -1,4 +1,4 @@
-# Modular Analysis Framework for DCM Analyses
+# Modular Analysis Framework for Large-Scale ML Analyses
 
 This is a framework for automating high-permutation, large scale ML analyses. 
 While it was developed for research into prediction post-surgical outcomes for patients with DCM,

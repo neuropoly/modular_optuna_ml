@@ -15,7 +15,8 @@ it can be easily extended to allow for the analysis of any tabular dataset.
    * `conda activate modular_optuna_ml`
    * `mamba activate modular_optuna_ml`
 4. Done!
-5. This only sets up the tool to be run; you will still need to create the configuration files for the analyses you want to run (see `testing` for an example).
+
+NOTE: This only sets up the tool to be run; you will still need to create the configuration files for the analyses you want to run (see the `testing` directory for some examples).
 
 ## Running the Program
 

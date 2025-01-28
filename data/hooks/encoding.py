@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 
-from config.utils import default_as, is_int, is_list, parse_data_config_entry
+from config.utils import default_as, is_int, is_list, is_not_null, parse_data_config_entry
 from data import BaseDataManager
 from data.hooks import registered_data_hook
 from data.hooks.base import FittedDataHook
@@ -136,7 +136,7 @@ class OrdinalEncoding(FittedDataHook):
             categories = [categories]
 
         # Create the underlying OrdinalEncoder
-        self.backing_encoder = OrdinalEncoder()#categories=categories)
+        self.backing_encoder = OrdinalEncoder(categories=categories, **config)
 
         # Keep track of which features we encode
         self.tracked_features = None
@@ -189,3 +189,118 @@ class OrdinalEncoding(FittedDataHook):
         TODO: implement autodetection of features to encode
         """
         self.tracked_features = shallow_copy(self.explicit_features)
+
+
+@registered_data_hook("ladder_encode")
+class LadderEncoding(FittedDataHook):
+    """
+    Extension of one-hot-encoding which allows for a specified order to be preserved
+    """
+    def __init__(self, config: dict, **kwargs):
+        super().__init__(config, **kwargs)
+
+        # Grab an explicit list of columns, if they were defined
+        self.feature = parse_data_config_entry(
+            "feature", config,
+            is_not_null(self.logger)
+        )
+        # Grab the maximum number of unique values allowed before a column is treated as continuous
+        self.order = parse_data_config_entry(
+            "order", config,
+            default_as([], self.logger), is_list(self.logger)
+        )
+
+        # Pass the rest of the arguments through to the OneHotEncoder directly; THIS IS TEMPORARY
+        self.backing_ohe_encoder = OneHotEncoder(**config)
+
+    @classmethod
+    def from_config(cls, config: dict, logger: Logger = Logger.root) -> Self:
+        return cls(config, logger=logger)
+
+    def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
+        # If this is multi-feature dataset, sub-features can be selected
+        if isinstance(x, MultiFeatureMixin):
+            # Fit to and transform the training data first
+            x: BaseDataManager | MultiFeatureMixin
+
+            # Setup
+            tmp_x = x.get_features([self.feature])
+
+            # Encode initially using One-Hot-Encoding; we'll build up from here
+            # noinspection PyUnresolvedReferences
+            tmp_x = self.backing_ohe_encoder.fit_transform(tmp_x.as_array())
+            # Densify result if it is in a sparse format
+            if hasattr(tmp_x, "todense"):
+                tmp_x = tmp_x.todense()
+
+            # Use the (now fit) OHE to generate our ladder encode
+            x_df: pd.DataFrame = self.ladder_encode(tmp_x)
+
+            # Update the dataset using these new feature names
+            x_out = x.drop_features([self.feature])
+            x_out = x_out.set_features(x_df.columns, x_df.to_numpy())
+            x_out: MultiFeatureMixin | BaseDataManager
+
+            # Return the result
+            return x_out
+
+    def run_fitted(self,
+            x_train: BaseDataManager,
+            x_test: Optional[BaseDataManager],
+            y_train: Optional[BaseDataManager] = None,
+            y_test: Optional[BaseDataManager] = None
+        ) -> (BaseDataManager, BaseDataManager):
+        # If this is multi-feature dataset, sub-features can be selected
+        if isinstance(x_train, MultiFeatureMixin):
+            # Fit to and transform the training data first
+            x_train: BaseDataManager | MultiFeatureMixin
+            x_test: BaseDataManager | MultiFeatureMixin
+            train_out = self.run(x_train, y_train)
+
+            # Use the now-fit encoder to transform our testing input
+            tmp_x: BaseDataManager | MultiFeatureMixin = x_test.get_features([self.feature])
+            tmp_x = self.backing_ohe_encoder.transform(tmp_x.as_array())
+            # Densify result if it is in a sparse format
+            if hasattr(tmp_x, "todense"):
+                tmp_x = tmp_x.todense()
+
+            x_df = self.ladder_encode(tmp_x)
+
+            # Update the testing dataset with these results
+            x_test = x_test.drop_features([self.feature])
+            test_out = x_test.set_features(x_df.columns, x_df.to_numpy())
+
+        # Ladder Encoding only makes sense in the context of multiple features; as such, any other type will not work!
+        else:
+            raise NotImplementedError("Ladder Encoding only makes sense in the context of a multi-feature dataset!")
+        return train_out, test_out
+
+    def ladder_encode(self, tmp_x):
+        """
+        Uses the np.cumsum trick to convert a One-Hot-Encoded dataset into a Ladder encoded one
+        """
+        # Generate the OHE feature names to help with iteration
+        ohe_feature_cols = self.backing_ohe_encoder.get_feature_names_out([self.feature])
+
+        # Convert our matrix into a dataframe for sanity’s sake
+        x_df = pd.DataFrame(tmp_x, columns=ohe_feature_cols)
+
+        # Re-order the dataframe into the user specified order
+        x_df = x_df.loc[:, [f"{self.feature}_{c}" for c in self.order]]
+
+        # Use the CumSum trick to format it into a proper "ladder" encode
+        x_df = np.cumsum(x_df, axis=1)
+
+        # # Re-label the columns to make it clear that they now represent a "step" between classes
+        # new_feature_cols = []
+        # for i, c in enumerate(self.order):
+        #     # First case is "special", as it represents the "base" instead
+        #     if i == 0:
+        #         new_feature_cols.append(f'{self.feature}_({c})')
+        #     # Everything else is a "step"
+        #     else:
+        #         new_feature_cols.append(f'{self.feature}_({self.order[i - 1]} -> {c})')
+        # x_df.columns = new_feature_cols
+
+        # Return the result
+        return x_df

@@ -1,5 +1,5 @@
 from copy import copy as shallow_copy
-from logging import Logger, debug
+from logging import DEBUG, Logger
 from typing import Optional, Self
 
 import numpy as np
@@ -281,23 +281,24 @@ class LadderEncoding(FittedDataHook):
         """
         # Generate the OHE feature names to help with iteration
         ohe_feature_cols = self.backing_ohe_encoder.get_feature_names_out([self.feature])
+        ordered_feature_cols = [f"{self.feature}_{c}" for c in self.order]
+
+        # If the user is wanting debugging info, report the features which are present in only 'order' or the OHE
+        if self.logger.isEnabledFor(DEBUG):
+            ohe_set = set(ohe_feature_cols)
+            order_set = set(ordered_feature_cols)
+
+            # DEBUG ONLY: Warn the user if any columns exist in one set, but not the other
+            for f in (ohe_set - order_set):
+                self.logger.debug(f"Feature {f} exists in the OHE, but not the specified order list.")
+            for f in (order_set - ohe_set):
+                self.logger.debug(f"Feature {f} exists in the order list, but not the OHE.")
 
         # Convert our matrix into a dataframe for sanity’s sake
         x_df = pd.DataFrame(tmp_x, columns=ohe_feature_cols)
 
-        # To account for features which may exist in the OneHotEncoder, but not in the order, do a set union
-        ohe_set = set(ohe_feature_cols)
-        order_set = set([f"{self.feature}_{c}" for c in self.order])
-        union_set = order_set.intersection(ohe_set)
-
-        # DEBUG ONLY: Warn the user if any columns exist in one set, but not the other
-        for f in (ohe_set - order_set):
-            self.logger.debug(f"Feature {f} exists in the OHE, but not the specified order list.")
-        for f in (order_set - ohe_set):
-            self.logger.debug(f"Feature {f} exists in the order list, but not the OHE.")
-
         # Filter and re-order the dataset to contain only the shared columns in both, preserving the 'order'
-        x_df = x_df.loc[:, list(union_set)]
+        x_df = x_df.loc[:, [f for f in ordered_feature_cols if f in ohe_feature_cols]]
 
         # Use the CumSum trick to format it into a proper "ladder" encode
         x_df = np.cumsum(x_df, axis=1)

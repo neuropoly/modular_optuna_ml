@@ -1,5 +1,5 @@
 from copy import copy as shallow_copy
-from logging import Logger
+from logging import Logger, debug
 from typing import Optional, Self
 
 import numpy as np
@@ -285,22 +285,22 @@ class LadderEncoding(FittedDataHook):
         # Convert our matrix into a dataframe for sanity’s sake
         x_df = pd.DataFrame(tmp_x, columns=ohe_feature_cols)
 
-        # Re-order the dataframe into the user specified order
-        x_df = x_df.loc[:, [f"{self.feature}_{c}" for c in self.order]]
+        # To account for features which may exist in the OneHotEncoder, but not in the order, do a set union
+        ohe_set = set(ohe_feature_cols)
+        order_set = set([f"{self.feature}_{c}" for c in self.order])
+        union_set = order_set.intersection(ohe_set)
+
+        # DEBUG ONLY: Warn the user if any columns exist in one set, but not the other
+        for f in (ohe_set - order_set):
+            self.logger.debug(f"Feature {f} exists in the OHE, but not the specified order list.")
+        for f in (order_set - ohe_set):
+            self.logger.debug(f"Feature {f} exists in the order list, but not the OHE.")
+
+        # Filter and re-order the dataset to contain only the shared columns in both, preserving the 'order'
+        x_df = x_df.loc[:, list(union_set)]
 
         # Use the CumSum trick to format it into a proper "ladder" encode
         x_df = np.cumsum(x_df, axis=1)
-
-        # # Re-label the columns to make it clear that they now represent a "step" between classes
-        # new_feature_cols = []
-        # for i, c in enumerate(self.order):
-        #     # First case is "special", as it represents the "base" instead
-        #     if i == 0:
-        #         new_feature_cols.append(f'{self.feature}_({c})')
-        #     # Everything else is a "step"
-        #     else:
-        #         new_feature_cols.append(f'{self.feature}_({self.order[i - 1]} -> {c})')
-        # x_df.columns = new_feature_cols
 
         # Return the result
         return x_df

@@ -10,6 +10,15 @@ from data.mixins import MultiFeatureMixin
 
 @registered_data_hook("dump")
 class DumpHook(DataHook):
+    """
+    A hook which will dump the data. Useful when you want to save data after encoding, imputation, etc.
+
+    Example usage:
+            {
+                "type": "dump",
+                "output_dest": ".output_dumped.tsv"
+            },
+    """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)
 

@@ -20,18 +20,19 @@ class AdaBoostClassifierManager(SciKitLearnModelManager[AdaBoostClassifier]):
         "label": "adaboost",
         "model": "AdaBoostClassifier",
         "parameters": {
-        "n_estimators": {
-            "label": "ada_n_estimators",
-            "type": "int",
-            "low": 10,
-            "high": 100
-        },
-        "learning_rate": {
-            "label": "ada_learning_rate",
-            "type": "float",
-            "log": true,
-            "low": 1e-3,
-            "high": 1e3
+            "n_estimators": {
+                "label": "ada_n_estimators",
+                "type": "int",
+                "low": 10,
+                "high": 100
+            },
+            "learning_rate": {
+                "label": "ada_learning_rate",
+                "type": "float",
+                "log": true,
+                "low": 1e-3,
+                "high": 1e3
+            }
         }
     }
     """
@@ -52,21 +53,22 @@ class RandomForestClassifierManager(SciKitLearnModelManager[RandomForestClassifi
         "label": "rf_classifier",
         "model": "RFC",
         "parameters": {
-        "criterion": {
-            "label": "rfc_criterion",
-            "type": "categorical",
-            "choices": ["gini", "entropy", "log_loss"]
-        },
-        "min_samples_split": {
-            "label": "rfc_min_samples_split",
-            "type": "int",
-            "low": 2,
-            "high": 12
-        },
-        "max_features": {
-            "label": "rfc_max_features",
-            "type": "categorical",
-            "choices": [10, "sqrt", "log2"]
+            "criterion": {
+                "label": "rfc_criterion",
+                "type": "categorical",
+                "choices": ["gini", "entropy", "log_loss"]
+            },
+            "min_samples_split": {
+                "label": "rfc_min_samples_split",
+                "type": "int",
+                "low": 2,
+                "high": 12
+            },
+            "max_features": {
+                "label": "rfc_max_features",
+                "type": "categorical",
+                "choices": [10, "sqrt", "log2"]
+            }
         }
     }
     """

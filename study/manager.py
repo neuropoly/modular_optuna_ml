@@ -1,3 +1,5 @@
+import os
+import glob
 import logging
 import sqlite3
 from copy import copy as shallow_copy
@@ -5,6 +7,8 @@ from itertools import chain
 from types import NoneType
 from typing import Optional
 
+import joblib
+import pandas as pd
 import numpy as np
 import optuna
 from optuna.samplers import TPESampler
@@ -215,6 +219,38 @@ class StudyManager(object):
             # Run a sub-study using this data
             self.run_replicate(i, train_idx, test_idx, x, y, s)
 
+            self.keep_the_best_model_for_replicate(i)
+
+    def keep_the_best_model_for_replicate(self, i):
+        """
+        Keep only the best model for given replicate and delete the rest
+        """
+        # TODO: the db code below might be probably improved
+        con = self.db_connection
+        tables = pd.read_sql("SELECT * FROM sqlite_master", con=con).loc[:, 'name']
+        for t in tables:
+            # Pull the dataframe from the database
+            try:
+                df_rep = pd.read_sql(f"SELECT * FROM {t}", con=con)
+            except:
+                self.logger.debug(f"Failed to read table {t}, ignoring it")
+                continue
+        # Get the best model for given replicate
+        best_model_trial_num = df_rep.loc[df_rep['log_loss (test)'].idxmin()].trial
+        # Keep only the best model for given replicate (e.g., `model_rep0_trial1.pkl`) and delete the rest
+        model_pattern = f"model_rep{i}_trial*.pkl"
+        model_files = glob.glob(os.path.join(self.study_config.output_path.parent, model_pattern))
+        # Keep only the best model and delete the rest
+        for model_file in model_files:
+            # Extract the trial number from the filename
+            trial_num = int(model_file.split("_trial")[-1].split(".pkl")[0])
+
+            if trial_num != best_model_trial_num:
+                os.remove(model_file)  # Delete non-best models
+                self.logger.debug(f"Deleted: {model_file}")
+            else:
+                self.logger.debug(f"Kept: {model_file}")
+
     def prepare_run(self):
         # Control for RNG before proceeding
         init_seed = self.study_config.random_seed
@@ -297,6 +333,11 @@ class StudyManager(object):
 
             # Save the metric values to the DB
             self.save_results(rep, trial, objective_value, metric_dict)
+
+            # Save the model for this trial
+            joblib.dump(model_manager._model,
+                        self.study_config.output_path.parent / f"model_rep{rep}_trial{trial.number}.pkl")
+            self.logger.debug(f"Saved model for replicate {rep} and trial {trial.number}")
 
             # Return the objective function so Optuna can run optimization based on it
             return objective_value

@@ -29,12 +29,12 @@ class OneHotEncoding(FittedDataHook):
     like any other config option (see "handle_unknown" in the example below).
 
     Example usage:
-        {
-            "type": "one_hot_encode",
-            "features": ["color"],
-            "max_unique_vals": 5,
-            "handle_unknown: "ignore"
-        }
+    {
+        "type": "one_hot_encode",
+        "features": ["color"],
+        "max_unique_vals": 5,
+        "handle_unknown: "ignore"
+    }
     """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)
@@ -160,12 +160,12 @@ class OrdinalEncoding(FittedDataHook):
     How the resulting data is encoded is otherwise identical to SciKit's implementation.
 
     Example usage:
-        {
-            "type": "ordinal_encode",
-            "features": ["size"],
-            "categories": ["small", "medium", "large"],
-            "handle_unknown: "ignore"
-        }
+    {
+        "type": "ordinal_encode",
+        "features": ["size"],
+        "categories": ["small", "medium", "large"],
+        "handle_unknown: "ignore"
+    }
     """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)
@@ -297,12 +297,12 @@ class LadderEncoding(FittedDataHook):
     Aside from these params, it can accept any parameter that the SciKit-Learn implementation of OneHotEncoder accepts.
 
     Example usage:
-        {
-            "type": "ladder_encode",
-            "feature": "size",
-            "order": ["small", "medium", "large"],
-            "min_frequency": 0.3
-        },
+    {
+        "type": "ladder_encode",
+        "feature": "size",
+        "order": ["small", "medium", "large"],
+        "min_frequency": 0.3
+    }
     """
     def __init__(self, config: dict, **kwargs):
         # TODO: Allow this to handle multiple features simultaneously

@@ -7,6 +7,7 @@ from itertools import chain
 from types import NoneType
 from typing import Optional
 
+import json
 import joblib
 import pandas as pd
 import numpy as np
@@ -190,6 +191,10 @@ class StudyManager(object):
             # For everything else, just leave it be
             else:
                 new_entry_components[p_label] = v
+
+        # Save model's params dict as JSON file
+        with open(self.study_config.output_path.parent / f'model_rep{replicate_n}_trial{trial.number}.json', 'w') as f:
+            json.dump(new_entry_components, f)
 
         # Re-order the values so they can cleanly save into the dataset
         ordered_values = [new_entry_components[k] for k in self.db_cols]

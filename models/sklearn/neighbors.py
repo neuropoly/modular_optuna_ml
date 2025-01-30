@@ -10,7 +10,31 @@ from models.sklearn.base import SciKitLearnModelManager
 
 class KNeighborsClassifierManager(SciKitLearnModelManager[KNeighborsClassifier]):
     """
-    Optuna model manager for the KNeighborsClassifier class in SciKit-Learn
+    Optuna model manager for the KNeighborsClassifier class in SciKit-Learn.
+
+    Example Usage:
+    {
+        "label": "KNNC",
+        "model": "KNNC",
+        "parameters": {
+            "weights": {
+                "type": "categorical",
+                "choices": ["uniform"]
+            },
+            "p": {
+                "label": "knnc_p",
+                "type": "float",
+                "low": 1,
+                "high": 2
+            },
+                "n_neighbors": {
+                "label": "knnc_n_neighbors",
+                "type": "int",
+                "low": 3,
+                "high": 16
+            }
+        }
+    }
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

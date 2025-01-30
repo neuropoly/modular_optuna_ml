@@ -9,7 +9,27 @@ from models.sklearn.base import SciKitLearnModelManager
 
 class SVCManager(SciKitLearnModelManager[SVC]):
     """
-    Optuna model manager for the SVC class in SciKit-Learn
+    Optuna model manager for the SVC class in SciKit-Learn.
+
+    Example Usage:
+    {
+        "label": "svm_classifier",
+        "model": "SVC",
+        "parameters": {
+            "kernel": {
+                "label": "svc_kernel",
+                "type": "categorical",
+                "choices": ["linear", "poly", "rbf", "sigmoid"]
+            },
+            "C": {
+                "label": "svc_C",
+                "type": "float",
+                "log": true,
+                "low": 1e-3,
+                "high": 1e3
+            }
+        }
+    }
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

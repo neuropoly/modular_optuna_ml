@@ -1,12 +1,11 @@
 from abc import ABC
 from logging import Logger
-from typing import Self, Optional
+from typing import Optional, Self
 
 import numpy as np
 import pandas as pd
 from optuna import Trial
 from sklearn.decomposition import PCA
-from sklearn.exceptions import NotFittedError
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 
@@ -20,6 +19,10 @@ from tuning.utils import Tunable, TunableParam
 
 ### Explicit Feature Selection ###
 class ExplicitFeatures(DataHook, ABC):
+    """
+    Abstract DataHook which allows the user to explicitly define a set of features they want the hook applied too,
+        via the "features" argument.
+    """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)
 
@@ -37,6 +40,15 @@ class ExplicitFeatures(DataHook, ABC):
 
 @registered_data_hook("drop_features_explicit")
 class ExplicitDrop(ExplicitFeatures):
+    """
+    Data Hook which drops any features the user specifies from the dataset outright.
+
+    Example usage:
+    {
+      "type": "drop_features_explicit",
+      "features": ["foo", "bar"]
+    }
+    """
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager | MultiFeatureMixin:
         # We can only drop features in a dataset if they have more than 1
         if not isinstance(x, MultiFeatureMixin):
@@ -46,6 +58,15 @@ class ExplicitDrop(ExplicitFeatures):
 
 @registered_data_hook("keep_features_explicit")
 class ExplicitKeep(ExplicitFeatures):
+    """
+    Data Hook which drops any features NOT specified by the user outright.
+
+    Example usage:
+    {
+      "type": "keep_features_explicit",
+      "features": ["baz", "bing"]
+    }
+    """
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager | MultiFeatureMixin:
         # We can only drop features in a dataset if they have more than 1
         if not isinstance(x, MultiFeatureMixin):
@@ -56,6 +77,9 @@ class ExplicitKeep(ExplicitFeatures):
 
 ### Feature Selection by Null Content ###
 class NullityDrop(DataHook, ABC):
+    """
+    Abstract data hook for dropping some component of the data based on a null "threshold"
+    """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)
 
@@ -72,17 +96,39 @@ class NullityDrop(DataHook, ABC):
 
 @registered_data_hook("sample_drop_null")
 class SampleNullityDrop(NullityDrop):
+    """
+    Data hook which will automatically remove samples in the dataset which contain more than some threshold amount of
+        null values. For example, with a threshold of 0.5, any samples which are missing more than half of their
+        features are dropped from the dataset.
+
+    Example usage:
+    {
+      "type": "sample_drop_null",
+      "threshold": 0.5
+    }
+    """
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager | MultiFeatureMixin:
-        # Iterate through all samples and calculate the null content for each, dropping
-        # any which surpass the configured threshold
-        n_samples = len(x)
-        null_tolerance = int(n_samples * self.threshold)
-        keep_idx = [i for i, k in enumerate(x)
-                    if np.sum(pd.isnull(k.as_array())) < null_tolerance]
+        # Iterate through all samples to calculate their null content, dropping any above the configured threshold
+        if not isinstance(x, MultiFeatureMixin):
+            raise ValueError(f"Sample-based nullity dropping only makes sense in the context of multi-feature data!")
+        x: BaseDataManager | MultiFeatureMixin
+        null_tolerance = int(x.n_features() * self.threshold)
+        keep_idx = [i for i, k in enumerate(x) if np.sum(pd.isnull(k.as_array())) < null_tolerance]
         return x[keep_idx]
 
 @registered_data_hook("feature_drop_null")
 class FeatureNullityDrop(NullityDrop):
+    """
+    Data hook which will automatically remove features in the dataset which contain more than some threshold amount of
+        null values. For example, with a threshold of 0.5, any feature whose sample's values are missing more than half
+        of the time are dropped from the dataset.
+
+    Example usage:
+    {
+      "type": "feature_drop_null",
+      "threshold": 0.5
+    }
+    """
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager | MultiFeatureMixin:
         # Make sure this DataManager has more than one feature!
         if not isinstance(x, MultiFeatureMixin):
@@ -99,6 +145,23 @@ class FeatureNullityDrop(NullityDrop):
 ### Principal Component Analysis ###
 @registered_data_hook("principal_component_analysis")
 class PrincipalComponentAnalysis(Tunable, FittedDataHook):
+    """
+    This data hook will transform the set of features provided to it into their representative Principal Components,
+        replacing the original set of features in the process. This is an extended implementation of SciKit-Learn's
+        implementation, which allows for the proportion of components being preserve to be tuned by Optuna dynamically;
+        it otherwise works identically to said implementation with default parameters.
+
+    Example usage:
+    {
+      "type": "principal_component_analysis",
+      "proportion": {
+        "label": "pca_component_prop",
+        "type": "float",
+        "low": 0.1,
+        "high": 0.9
+      }
+    }
+    """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config=config, **kwargs)
         super(FittedDataHook, self).__init__(config=config, **kwargs)
@@ -112,6 +175,7 @@ class PrincipalComponentAnalysis(Tunable, FittedDataHook):
         self.prop_tuner: TunableParam = TunableParam.from_config_entry(select_prop)
 
         # Keep tabs on a backing instance for later user
+        # TODO: Preserve the remaining config to allow other PCA-related params to be specified by the user
         self.backing_pca: PCA | None = None
 
 
@@ -178,6 +242,24 @@ class PrincipalComponentAnalysis(Tunable, FittedDataHook):
 ### Recursive Feature Elimination ###
 @registered_data_hook("recursive_feature_elimination")
 class RecursiveFeatureElimination(Tunable, FittedDataHook):
+    """
+    This data hook will remove the features which have the least impact on a LogisticRegression's performance,
+        identified by recursively removing them until the specified threshold of features is reached. This is an
+        extended implementation of SciKit-Learn's implementation, which allows for the proportion of components being
+        kept to be tuned by Optuna dynamically; it otherwise works identically to said implementation with default
+        parameters.
+
+    Example usage:
+    {
+      "type": "recursive_feature_elimination",
+      "proportion": {
+        "label": "rfe_component_prop",
+        "type": "float",
+        "low": 0.1,
+        "high": 0.9
+      }
+    }
+    """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config=config, **kwargs)
         super(FittedDataHook, self).__init__(config=config, **kwargs)
@@ -203,6 +285,7 @@ class RecursiveFeatureElimination(Tunable, FittedDataHook):
     def tune(self, trial: Trial):
         self.prop_tuner.tune(trial)
         # Generate the new backing model based on this setup
+        # TODO: Generalize this to work with continuous targets as well
         new_lor = LogisticRegression()
         self.backing_rfe = RFE(estimator=new_lor, n_features_to_select=self.prop_tuner.value)
 

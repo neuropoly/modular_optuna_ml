@@ -6,6 +6,22 @@ from optuna import Trial
 
 class TunableParam:
     TrialClosure = Callable[[Trial], Any]
+    """
+    Defines a parameter which can be tuned by Optuna during model optimization.
+
+    In essence, this is just a wrapper for a float, int, or string which is not evaluated until requested by this
+        framework (usually during Optuna parameter tuning). Once it is requested to be evaluated, it will request the
+        provided Optuna Trial object provide a value, which will then be used to as this parameter's value until 
+        another tuning request is made.
+        
+    This class is meant to be used in conjunction with the "Tunable" mixin, which provides standardized utility 
+        function for (re-)evaluating these parameters when an Optuna study needs it to be.
+        
+    This class also managed the following for itself:
+        * Configuration parsing (including the type and range of values which Optuna can sample for each parameter)
+        * How the parameter's value should be tracked and managed by the backing SQLite database. Due to how SQL updates
+            are coded, however, saving the parameter's values is managed the StudyManager instead.
+    """
 
     unlabelled_idx = 0
 
@@ -85,8 +101,12 @@ class TunableParam:
 
 class Tunable(ABC):
     """
-    Simple mixin which denotes that an object can be tuned via an Optuna Study using
-    parameters derived from an Optuna Trial.
+    Mixin which denotes that an object can be tuned via an Optuna Study using parameters derived from an Optuna Trial.
+
+    Classes which utilize this mixin should generally contain (or have the potential to contain) at least one
+        instance of a `TunableParameter` class, whose values will be (re-)evaluated during the `tune` function.
+        Likewise, this class must be able to return a list of the TunableParameters it manages, so that other elements
+        of this framework (such as the Study) can track them for use in its own utilities (such as database management)
     """
     def __init__(self, label: str = '', **kwargs):
         self.label = label

@@ -12,6 +12,7 @@ from data.mixins import MultiFeatureMixin
 class DumpHook(DataHook):
     """
     A hook which will dump the data. Useful when you want to save data after encoding, imputation, etc.
+    The output file format is determined by the output_dest file extension (either 'tsv' or 'csv').
 
     Example usage:
             {
@@ -27,6 +28,11 @@ class DumpHook(DataHook):
             "output_dest", config,
             default_as('./dumped.tsv', self.logger)
         )
+        # Extract the output file suffix (tsv or csv); raise an error if it's not one of the two
+        self.output_type = self.output_dest.split('.')[-1]
+        if self.output_type not in ['tsv', 'csv']:
+            raise ValueError(f"Invalid output type '{self.output_type}' for DumpHook! "
+                             f"Please make sure the output type is one of the following: ['tsv', 'csv']")
 
     @classmethod
     def from_config(cls, config: dict, logger: Logger = Logger.root) -> Self:
@@ -40,6 +46,11 @@ class DumpHook(DataHook):
         if isinstance(x, MultiFeatureMixin):
             df_out = x.data
             df_out['target'] = y.as_array()
-            df_out.to_csv(self.output_dest, sep='\t')
+            # Save the dataframe, depending on the output type
+            if self.output_type == 'tsv':
+                df_out.to_csv(self.output_dest, sep='\t')
+            elif self.output_type == 'csv':
+                df_out.to_csv(self.output_dest, sep=',')
+
         # Return the result, unchanged
         return x

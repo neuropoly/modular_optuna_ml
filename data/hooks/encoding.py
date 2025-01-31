@@ -308,7 +308,8 @@ class LadderEncoding(FittedDataHook):
         "type": "ladder_encode",
         "feature": "size",
         "order": ["small", "medium", "large"],
-        "min_frequency": 0.3
+        "min_frequency": 0.3,
+        "handle_unknown": "warn"
     }
     """
     def __init__(self, config: dict, **kwargs):

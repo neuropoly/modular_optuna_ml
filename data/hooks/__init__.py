@@ -35,3 +35,4 @@ from data.hooks.feature_selection import (
 from data.hooks.imputation import SimpleImputation
 from data.hooks.encoding import OneHotEncoding
 from data.hooks.standardization import StandardScaling
+from data.hooks.misc import DumpHook

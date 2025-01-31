@@ -16,7 +16,8 @@ it can be easily extended to allow for the analysis of any tabular dataset.
    * `mamba activate modular_optuna_ml`
 4. Done!
 
-NOTE: This only sets up the tool to be run; you will still need to create the configuration files for the analyses you want to run (see the `testing` directory for some examples).
+> [!NOTE]
+> This only sets up the tool to be run; you will still need to create the configuration files for the analyses you want to run (see the `testing` directory for some examples).
 
 ## Running the Program
 

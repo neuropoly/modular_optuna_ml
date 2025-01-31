@@ -301,7 +301,9 @@ class LadderEncoding(FittedDataHook):
     * `feature`: The feature you want to ladder encode
     * `order`: The order the features should be encoded in (that is, how the ladder will be formed).
 
-    Aside from these params, it can accept any parameter that the SciKit-Learn implementation of OneHotEncoder accepts.
+    Aside from these params, it can accept any parameter that the SciKit-Learn implementation of OneHotEncoder accepts. For example:
+    
+    * `min_frequency`: Any value which is present in less than this number (if int) or proportion (if float) of samples in the dataset are treated as part of the 'infrequent' class during encoding, rather than receiving their own encoded feature.
 
     Example usage:
     {

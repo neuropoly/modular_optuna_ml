@@ -35,6 +35,13 @@ class OneHotEncoding(FittedDataHook):
         "max_unique_vals": 5,
         "handle_unknown: "ignore"
     }
+    In the case of a binary variable:
+        {
+        "type": "one_hot_encode",
+        "features": ["sex"],
+        "drop": "if_binary",
+        "handle_unknown": "warn"
+    }
     """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)

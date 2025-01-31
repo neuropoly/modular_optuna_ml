@@ -19,6 +19,9 @@ class DumpHook(DataHook):
                 "type": "dump",
                 "output_dest": ".output_dumped.tsv"
             },
+
+    Note: depending on the position of the hook in data_config.json, the data may be in a different state. For example,
+    if you want to dump the data after encoding, make sure the hook is placed after the encoding hook(s).
     """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)

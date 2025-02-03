@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'ModOptML'
+project = 'MOOP'
 copyright = '2025, Kalum Ost and Jan Valosek'
 author = 'Kalum Ost and Jan Valosek'
 release = '0.1'

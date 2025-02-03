@@ -252,6 +252,7 @@ class StudyManager(object):
 
             if trial_num != best_model_trial_num:
                 os.remove(model_file)  # Delete non-best models
+                os.remove(model_file.replace(".pkl", ".json"))
                 self.logger.debug(f"Deleted: {model_file}")
             else:
                 self.logger.debug(f"Kept: {model_file}")

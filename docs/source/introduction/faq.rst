@@ -1,5 +1,8 @@
+F.A.Q.
+======
+
 What Won't MOOP Do?
-===================
+###################
 
 Data Prep/Cleaning
 ------------------
@@ -14,7 +17,7 @@ MOOP will not run these for you itself. However, by creating sets of configurati
 
 
 What's Planned?
-==============
+###############
 
 Other features are planned, but not currently implemented. We hope to add them soon!
 

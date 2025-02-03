@@ -45,5 +45,6 @@ Please see **TODO** for details on how to add this kind of custom functionality!
    :maxdepth: 2
    :caption: Contents:
 
+   introduction/getting_started
    introduction/faq
 

@@ -39,6 +39,7 @@ class DumpHook(DataHook):
         # We can only dump tabular datasets currently
         if isinstance(x, MultiFeatureMixin):
             df_out = x.data
+            df_out[y.data.columns[0]] = y.data.iloc[:, 0]
             df_out['target'] = y.as_array()
             df_out.to_csv(self.output_dest, sep='\t')
         # Return the result, unchanged

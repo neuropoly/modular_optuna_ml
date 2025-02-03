@@ -50,4 +50,4 @@ An example version of each of these configuration files is provided in the 'test
 
     python run_ml_analysis.py -d testing/iris_data/iris_config.json -m testing/model_configs/log_reg.json -s testing/testing_study_config.json
 
-
+If this ran correctly, and you would like to make your own set of configuration files to run your own MOOP analysis, you should refer to the :doc:`../walkthrough/index` to familiarize yourself with how to do so.

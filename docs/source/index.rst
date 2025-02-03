@@ -41,10 +41,14 @@ While MOOP strives to provide native support for most common operations (providi
 Please see **TODO** for details on how to add this kind of custom functionality!
 
 
+Getting Started
+===============
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
-   introduction/getting_started
+   introduction/setting_up
    introduction/faq
+
+   walkthrough/index
+
 

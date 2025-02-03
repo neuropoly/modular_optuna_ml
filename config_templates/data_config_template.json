@@ -1,0 +1,37 @@
+{
+  "label": "data_label",
+  "data_source": "path/to/your/data.csv",
+  "format": "tabular",
+  "separator": ",",
+  "index": "column_to_label_samples_with",
+  "pre_split_hooks": [
+    {
+      "type": "hook_type",
+      "param1": 1,
+      "param2": "b"
+    }, {
+      "type": "tunable_hook_type",
+      "tunable_param": {
+        "label": "param_label_in_db",
+        "type": "int",
+        "low": 1,
+        "high": 10
+      }
+    }
+  ],
+  "post_split_hooks": [
+    {
+      "type": "fitted_hook_type",
+      "param3": "For the Greater Good"
+    }, {
+      "type": "fitted_and_tunable_hook_type",
+      "tunable_param": {
+        "label": "fitted_param_label_in_db",
+        "type": "float",
+        "log": true,
+        "low": 0.1,
+        "high": 10.0
+      }
+    }
+  ]
+}

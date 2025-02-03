@@ -1,3 +1,4 @@
+from copy import copy as shallow_copy
 from logging import Logger
 from typing import Optional, Self
 
@@ -47,7 +48,7 @@ class DumpHook(DataHook):
         ) -> BaseDataManager:
         # We can only dump tabular datasets currently
         if isinstance(x, MultiFeatureMixin):
-            df_out = x.data
+            df_out = shallow_copy(x.data)
             df_out[y.data.columns[0]] = y.data.iloc[:, 0]
             df_out['target'] = y.as_array()
             # Save the dataframe, depending on the output type

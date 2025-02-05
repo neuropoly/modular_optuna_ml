@@ -298,10 +298,25 @@ class LadderEncoding(FittedDataHook):
         x_df = pd.DataFrame(tmp_x, columns=ohe_feature_cols)
 
         # Filter and re-order the dataset to contain only the shared columns in both, preserving the 'order'
-        x_df = x_df.loc[:, [f for f in ordered_feature_cols if f in ohe_feature_cols]]
+        ordered_and_shared_cols = [f for f in ordered_feature_cols if f in ohe_feature_cols]
+        x_df = x_df.loc[:, ordered_and_shared_cols]
 
         # Use the CumSum trick to format it into a proper "ladder" encode
-        x_df = np.cumsum(x_df, axis=1)
+        new_x_df = np.cumsum(x_df, axis=1)
+
+        # Edge case; in some cases (such as all columns in the one-hot-encoder being present in the ordered list), the
+        #  column representing the 'last' rung in the ladder will be all 1. This homogeneity, rather unfortunately,
+        #  results in most machine learning models treating the features as a way to apply a universal effect onto the
+        #  predictions for all samples. In effect, this results in the 'final' step in the encoding being treated as the
+        #  baseline upon which the other steps are built on; the exact opposite of what we want.
+        # To correct for this, when we detect this is the case, we can fall back to our original one-hot-encoding, but
+        #  drop the 'first' rung instead. This removes that classes impact on the encoding of the other class's feature,
+        #  in turn introducing a set of 0s into the 'last' rung and preventing the problematic homogeneity. This is at
+        #  the cost of the 'first' feature disappearing in the feature set (and, by extension, during feature importance
+        #  measures), which can be a bit confusing if they're not aware of this.
+        if new_x_df.loc[ordered_and_shared_cols[-1]].dropna().nunique() == 1:
+            new_x_df = x_df.drop(ordered_and_shared_cols[0])
+            new_x_df = np.cumsum(new_x_df)
 
         # Return the result
-        return x_df
+        return new_x_df

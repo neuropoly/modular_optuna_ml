@@ -317,9 +317,8 @@ class LadderEncoding(FittedDataHook):
         prior_group = None
         ladder_dict = {}
         for c in self.order:
-            # If this column doesn't exist in the OHE, add it to the column group for later column naming
+            # If this column doesn't exist in the OHE, skip it entirely
             if c not in ohe_df.columns:
-                col_group.append(c)
                 continue
 
             # Otherwise, append it to both the column pool and column group

@@ -31,7 +31,7 @@ First thing's first, the config needs to specify the where the data it is config
         "data_source": "data.csv",
         "format": "tabular",
         "separator": ",",
-        "index": "id"
+        "index": "id",
         ...
     }
 
@@ -54,3 +54,81 @@ Any arguments past these three will be specific to the format you specified; thi
 
 Data Hooks and You
 ------------------
+
+In MOOP, any operation which would inspect or modify any of the datasets is done via a "hook" into the analysis. Data hooks can be applied either before or after a given data split operation; the former will apply the hook to the entire dataset at that point, while the latter will attempt to use the "training" subset of the data to fit the hook before it is applied to both subsets, allowing you to mitigate potential data leakage. To demonstrate the former, lets define a data hook which will drop the "meta" column from the entire dataset. We'll apply it pre-split, to the entire dataset, by placing it in the ``pre_split_hooks`` list:
+
+.. code-block:: json
+
+    {
+        ...
+        "pre_split_hooks": [
+            {
+                "type": "drop_features_explicit",
+                "features": ["meta"]
+            }
+        ],
+        ...
+    }
+
+In contrast, one-hot-encoding our 'bar' column should done by fitting it to a training dataset and then applying the result to both, as to avoid information leaking between the two. Therefore it needs to be done post-split; to do so, we add it to the ``post-split-hooks`` list, like so:
+
+.. code-block:: json
+
+    {
+        ...
+        "post_split_hooks": [
+            {
+                "type": "one_hot_encode",
+                "features": ["bar"]
+            }
+        ]
+        ...
+    }
+
+Finally, we have the special case data scaling. This also should be fit to a training dataset, but should be run during cross-validation within each replicate as well. To let MOOP know that this is the case, we have to add the ``"run_per_cross": true`` flag to the data-hook.
+
+.. code-block:: json
+
+    {
+        ...
+        "post_split_hooks": [
+            {
+                "type": "one_hot_encode",
+                "features": ["bar"]
+            }, {
+                "type": "standard_scaling",
+                "run_per_cross": true
+            }
+        ]
+    }
+
+Well done! The configuration file for our dataset is now complete and ready to be utilized by MOOP. Assuming you followed the full tutorial, the final resulting file should look something like this:
+
+.. code-block:: json
+
+    {
+        "label": "walkthrough_data",
+        "data_source": "data.csv",
+        "format": "tabular",
+        "separator": ",",
+        "index": "id",
+        "pre_split_hooks": [
+            {
+                "type": "drop_features_explicit",
+                "features": ["meta"]
+            }
+        ],
+        "post_split_hooks": [
+            {
+                "type": "one_hot_encode",
+                "features": ["bar"]
+            }, {
+                "type": "standard_scaling",
+                "run_per_cross": true
+            }
+        ]
+    }
+
+.. note::
+
+    The order you specify the data hooks within their respective lists is also the order they will be run in. As such, you should keep in mind how the data would be modified when adding new data hooks; for example, it does not make much sense to drop a column after you have modified it! The only exception to the order you specify is that pre-split hooks will always be run before post-split hooks, of course.

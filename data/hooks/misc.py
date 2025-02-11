@@ -50,7 +50,6 @@ class DumpHook(DataHook):
         if isinstance(x, MultiFeatureMixin):
             df_out = shallow_copy(x.data)
             df_out[y.data.columns[0]] = y.data.iloc[:, 0]
-            df_out['target'] = y.as_array()
             # Save the dataframe, depending on the output type
             if self.output_type == 'tsv':
                 df_out.to_csv(self.output_dest, sep='\t')

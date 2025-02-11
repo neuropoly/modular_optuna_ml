@@ -110,4 +110,4 @@ Depending on the type specified, the remaining values you need to provide will c
 * *int:* An integer (whole) number. Requires "low" and "high" values be specified, which determine the minimum and maximum values Optuna can select during tuning, respectively.
 * *categorical:* A set of choices, specified by you within the "choices" list. The contents of this list can be anything the corresponding model accepts. At least one value must be in this list!
 
-Now Optuna will attempt to maximize the model's performance in reach replicate by iteratively modifying any "tunable" parameters you've given it. All thats left to implement is the study parameters, which define how MOOP (and Optuna) will do so!
+Now Optuna will attempt to maximize the model's performance in reach replicate by iteratively modifying any "tunable" parameters you've given it. All that's left to implement is the study parameters, which define how MOOP (and Optuna) will do so!

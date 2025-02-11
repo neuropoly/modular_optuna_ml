@@ -391,7 +391,7 @@ class LadderEncoding(FittedDataHook):
             # Generate the corresponding column's name, but only if we had a prior group (the first col will be dropped)
             col_name = ""
             if prior_group_str is not None:
-                col_name = f"{self.feature} ({prior_group_str} -> {group_str})"
+                col_name = f"{self.feature} ({prior_group_str} <- {group_str})"
 
             # Save this result into the dictionary for later
             ladder_dict[col_name] = rung_val
@@ -405,8 +405,14 @@ class LadderEncoding(FittedDataHook):
         # Drop the first (base) column to avoid a homogenous final column
         ladder_df = ladder_df.iloc[:, 1:]
 
+        # Reverse the column order before applying cumsum
+        ladder_df = ladder_df.iloc[:, ::-1]
+
         # Apply CumSum again to finalize the ladder encoding
         ladder_df = np.cumsum(ladder_df, axis=1)
+
+        # Reverse the column order back to the original
+        ladder_df = ladder_df.iloc[:, ::-1]
 
         # Return the result
         return ladder_df

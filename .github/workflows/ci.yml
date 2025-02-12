@@ -33,6 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           conda env create -f environment.yml
+          conda init
           conda activate modular_optuna_ml
 
       - name: Run tests with pytest

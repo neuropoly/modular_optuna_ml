@@ -62,13 +62,13 @@ Referring back to our original dataset, the ``target`` would be the 'baz' column
 
     Currently MOOP only supports supervised learning analyses, and as such a ``target`` column must always be specified in the study configuration file. This is subject to change, in which case the configuration file will only need to provide an ``objective`` parameter in that context.
 
-Finally, we want to define where we want the results of MOOP to be stored. This will *always* be a SQLite Database (usually denoted with the ``.db`` extension), and we can explicitly define where we want it to be placed with the ``output`` param:
+Finally, we want to define where we want the results of MOOP to be stored. This will *always* be a SQLite Database (usually denoted with the ``.db`` extension), and we can explicitly define where we want it to be placed with the ``output_path`` param:
 
 .. code-block:: json
 
     {
         ...
-        "output": "output/moop_results.db"
+        "output_path": "output/moop_results.db"
     }
 
 Voila! You now have viable study configuration file. If you followed everything up to this point, it should look something like this:
@@ -83,7 +83,7 @@ Voila! You now have viable study configuration file. If you followed everything 
         "no_crosses": 10,
         "target": "baz",
         "objective": "log_loss",
-        "output": "output/moop_results.db"
+        "output_path": "output/moop_results.db"
     }
 
 Performance and Structure Tracking

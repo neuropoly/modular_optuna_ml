@@ -32,8 +32,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          mamba env create -f environment.yml
-          mamba activate modular_optuna_ml
+          conda env create -f environment.yml
+          conda activate modular_optuna_ml
 
       - name: Run tests with pytest
         run: |

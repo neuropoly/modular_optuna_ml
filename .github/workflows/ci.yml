@@ -30,12 +30,15 @@ jobs:
         with:
           python-version: 3.12
 
-      - name: Install dependencies
-        run: |
-          conda env create -f environment.yml
-          conda init
-          conda activate modular_optuna_ml
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: 3.12
+          environment-file: environment.yml
+          activate-environment: modular_optuna_ml
+          auto-activate-base: false
 
       - name: Run tests with pytest
+        shell: bash -l {0}  # Ensures the Conda environment is properly loaded
         run: |
-          python -m pytest -v tests/tests_encoding.py
+          pytest -v tests/tests_encoding.py

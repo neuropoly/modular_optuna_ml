@@ -1,5 +1,5 @@
-Model Configuration and Automatic Tuning
-========================================
+Model Configuration
+===================
 
 Model Configuration Set-Up
 ----------------------------

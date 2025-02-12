@@ -1,5 +1,5 @@
-Study Design and Configuration
-==============================
+Study Configuration
+===================
 
 .. _study-config-walkthrough:
 

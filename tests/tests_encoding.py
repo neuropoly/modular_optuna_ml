@@ -50,10 +50,8 @@ def test_one_hot_encoding(iris_manager):
     """
     Tests OneHotEncoding on the 'color' column.
     """
-
     hook_cls = DATA_HOOKS.get('one_hot_encode', None)
     ohe = hook_cls.from_config(config={'features': ['color']})
-
     encoded = ohe.run(iris_manager.data_manager)
 
     cols = list(encoded.data.columns)

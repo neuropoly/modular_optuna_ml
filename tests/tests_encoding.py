@@ -11,6 +11,7 @@ import json
 import tempfile
 import pytest
 
+import numpy as np
 import pandas as pd
 
 from pathlib import Path
@@ -77,3 +78,32 @@ def test_one_hot_encoding(iris_manager):
                 assert row[1][col] == 1
             else:
                 assert row[1][col] == 0
+
+def test_ordinal_encoding(iris_manager):
+    """
+    Tests OrdinalEncoding on the 'color' column.
+    """
+
+    ordinal_encoding = {'white': 0, 'purple': 1, 'pink': 2}
+
+    hook_cls = DATA_HOOKS.get('ordinal_encode', None)
+    ordinal = hook_cls.from_config(config={'features': ['color'],
+                                           'categories': list(ordinal_encoding.keys()),
+                                           'unknown_value': np.nan,
+                                           'handle_unknown': 'use_encoded_value'})
+    encoded = ordinal.run(iris_manager.data_manager)
+
+    input_data = iris_manager.data_manager.data['color'].rename('color')
+    encoded_data = encoded.data['color'].rename('color_encoded')
+
+    # Combine input_data and encoded_data into a single DataFrame for easier comparison
+    combined = pd.concat([input_data, encoded_data], axis=1)
+    # Check that the encoding is correct
+    for row in combined.iterrows():
+        color = row[1]['color']
+        color_encoded = row[1]['color_encoded']
+        if color in ordinal_encoding:
+            assert color_encoded == ordinal_encoding[color]
+        else:
+            assert pd.isna(color_encoded)
+

@@ -86,7 +86,7 @@ And for a numeric hyper-parameter, lets specify the L1 and L2 penalties which ca
             ...
             "l1_c": {
                 "label": "logreg_l1",
-                "type": "float"
+                "type": "float",
                 "low": 0.1,
                 "high": 10
             },

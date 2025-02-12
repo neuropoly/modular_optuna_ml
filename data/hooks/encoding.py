@@ -204,10 +204,11 @@ class LadderEncoding(FittedDataHook):
             "feature", config,
             is_not_null(self.logger)
         )
-        # Grab the maximum number of unique values allowed before a column is treated as continuous
+        # Have the user define the order of the ladder explicitly;
+        #  this needs to provided for a LadderEncode to make sense!
         self.order = parse_data_config_entry(
             "order", config,
-            default_as([], self.logger), is_list(self.logger)
+            is_list(self.logger)
         )
         # We handle min-frequency detection ourselves, to avoid the creation of an "infrequent" column which has no
         #  position in the order

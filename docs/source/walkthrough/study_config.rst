@@ -82,7 +82,7 @@ Voila! You now have viable study configuration file. If you followed everything 
         "no_trials": 10,
         "no_crosses": 10,
         "target": "baz",
-        "objective": "log_loss"
+        "objective": "log_loss",
         "output": "output/moop_results.db"
     }
 

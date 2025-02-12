@@ -22,7 +22,8 @@
     {
       "type": "ladder_encode",
       "feature": "size",
-      "order": ["small", "medium", "large"]
+      "order": ["small", "medium", "large"],
+      "min_frequency": 0.3
     },
     {
       "type": "imputation_simple",

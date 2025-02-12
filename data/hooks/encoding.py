@@ -1,12 +1,12 @@
 from copy import copy as shallow_copy
-from logging import Logger
+from logging import DEBUG, Logger
 from typing import Optional, Self
 
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 
-from config.utils import default_as, is_int, is_list, is_not_null, parse_data_config_entry
+from config.utils import default_as, is_float, is_int, is_list, is_not_null, parse_data_config_entry
 from data import BaseDataManager
 from data.hooks import registered_data_hook
 from data.hooks.base import FittedDataHook
@@ -204,14 +204,43 @@ class LadderEncoding(FittedDataHook):
             "feature", config,
             is_not_null(self.logger)
         )
-        # Grab the maximum number of unique values allowed before a column is treated as continuous
-        self.order = parse_data_config_entry(
-            "order", config,
-            default_as([], self.logger), is_list(self.logger)
+        # Have the user define the order of the ladder explicitly;
+        #  this needs to provided for a LadderEncode to make sense!
+        order = parse_data_config_entry(
+            "order", config
+        )
+        if type(order) is not list:
+            raise ValueError("Ladder encoding needs a list of ordinal values, in the desired order, to function. "
+                             f"Value of the data config was of type '{type(order)}'.")
+        if len(order) < 2:
+            raise ValueError("To ladder encode data, at least 2 values must be provided in the 'order' argument. "
+                             f"The provided list had {len(order)} value(s) instead.")
+        self.order = order
+
+        # We handle min-frequency detection ourselves, to avoid the creation of an "infrequent" column which has no
+        #  position in the order
+        self.min_frequency = parse_data_config_entry(
+            "min_frequency", config,
+            default_as(0., self.logger), is_float(self.logger)
         )
 
-        # Pass the rest of the arguments through to the OneHotEncoder directly; THIS IS TEMPORARY
-        self.backing_ohe_encoder = OneHotEncoder(**config)
+        # Slap the user for trying to specify whether the data should be spare or not
+        sparse_output = parse_data_config_entry(
+            "sparse_output", config
+        )
+        if sparse_output is not None:
+            raise ValueError("Please don't define whether the data should be sparse of not; this is handled by the tool.")
+
+        # Generate the backing OneHotEncoder; note that many config options are isolated explicitly to prevent headaches
+        self.backing_ohe_encoder = OneHotEncoder(
+            min_frequency=None,
+            sparse_output=False,
+            feature_name_combiner=lambda _, y: y,
+            **config
+        )
+
+        # Track a list of values which will be concatenated, determined during fit
+        self.order_groups = []
 
     @classmethod
     def from_config(cls, config: dict, logger: Logger = Logger.root) -> Self:
@@ -224,17 +253,13 @@ class LadderEncoding(FittedDataHook):
             x: BaseDataManager | MultiFeatureMixin
 
             # Setup
-            tmp_x = x.get_features([self.feature])
+            sub_x = x.get_features([self.feature])
 
-            # Encode initially using One-Hot-Encoding; we'll build up from here
-            # noinspection PyUnresolvedReferences
-            tmp_x = self.backing_ohe_encoder.fit_transform(tmp_x.as_array())
-            # Densify result if it is in a sparse format
-            if hasattr(tmp_x, "todense"):
-                tmp_x = tmp_x.todense()
+            # Fit this model to the provided feature subset
+            x_df = self.fit(sub_x)
 
-            # Use the (now fit) OHE to generate our ladder encode
-            x_df: pd.DataFrame = self.ladder_encode(tmp_x)
+            # Use the (now fit) encoder to generate our encoded data
+            x_df = self.ohe_to_ladder(x_df)
 
             # Update the dataset using these new feature names
             x_out = x.drop_features([self.feature])
@@ -243,6 +268,73 @@ class LadderEncoding(FittedDataHook):
 
             # Return the result
             return x_out
+
+    def fit(self, x):
+        """
+        Fits the OneHotEncoder to our data, and identifies groups of sequential columns which, when grouped together,
+            are "frequent" enough to pass the frequency check given by the user.
+
+        Doing so explicitly prevents issues down the line (i.e. a rare class which appears during training but not
+            testing breaking the transform)
+        """
+        # Reset the groupings before proceeding
+        self.order_groups = []
+
+        x = self.backing_ohe_encoder.fit_transform(x.as_array())
+
+        # Generate the OHE feature names to help with iteration
+        ohe_feature_cols = self.backing_ohe_encoder.get_feature_names_out([self.feature])
+
+        # If the user wants debugging info, report the features which are present in only 'order' or the OHE groups
+        if self.logger.isEnabledFor(DEBUG):
+            ohe_set = set(ohe_feature_cols)
+            order_set = set(self.order)
+
+            # DEBUG ONLY: Warn the user if any columns exist in one set, but not the other
+            for f in (ohe_set - order_set):
+                self.logger.debug(f"Feature {f} exists in the OHE, but not the specified order list.")
+            for f in (order_set - ohe_set):
+                self.logger.debug(f"Feature {f} exists in the order list, but not the OHE.")
+
+        # Convert our OHE matrix into a dataframe for sanity’s sake
+        ohe_df = pd.DataFrame(x, columns=ohe_feature_cols)
+
+        # Generate the list of features shared between the OHE and the specified order, sorting them to abide by the latter
+        ordered_and_shared_cols = [f for f in self.order if f in ohe_feature_cols]
+
+        # Use the prior list to re-order and filter the OHE dataframe
+        ohe_df = ohe_df.loc[:, ordered_and_shared_cols]
+
+        # Iterate through the columns in the OHE in our specified order to identity clusters of infrequent groups
+        col_group = []
+        for c in self.order:
+            # If this column doesn't exist in the OHE, skip it entirely
+            if c not in ohe_df.columns:
+                continue
+
+            # Otherwise, append it to our current column group
+            col_group.append(c)
+
+            # Test whether this new column group results in a grouping which is no longer infrequent
+            ladder_sample = np.cumsum(ohe_df.loc[:, col_group], axis=1).iloc[:, -1]
+
+            # If not, proceed as normal
+            if np.sum(ladder_sample) < self.min_frequency * ohe_df.shape[0]:
+                continue
+
+            # Otherwise, append the group to our order group list as-is
+            self.order_groups.append(col_group)
+
+            # Reset the state in preparation for the next column
+            col_group = []
+
+        # Edge-Case; if the tailing classes in the order are infrequent on their own, they would be "orphaned" by the
+        #   prior loop. To avoid this, append them to the last group we tested
+        if len(col_group) > 0:
+            self.order_groups[-1].extend(col_group)
+
+        # Return the OHE-encoded version of the data for re-use
+        return ohe_df
 
     def run_fitted(self,
             x_train: BaseDataManager,
@@ -258,13 +350,15 @@ class LadderEncoding(FittedDataHook):
             train_out = self.run(x_train, y_train)
 
             # Use the now-fit encoder to transform our testing input
-            tmp_x: BaseDataManager | MultiFeatureMixin = x_test.get_features([self.feature])
-            tmp_x = self.backing_ohe_encoder.transform(tmp_x.as_array())
-            # Densify result if it is in a sparse format
-            if hasattr(tmp_x, "todense"):
-                tmp_x = tmp_x.todense()
+            sub_x_train: BaseDataManager | MultiFeatureMixin = x_test.get_features([self.feature])
+            sub_x_train = self.backing_ohe_encoder.transform(sub_x_train.as_array())
 
-            x_df = self.ladder_encode(tmp_x)
+            ohe_feature_cols = self.backing_ohe_encoder.get_feature_names_out([self.feature])
+
+            # Convert it to a dataframe for ease of use
+            ohe_df = pd.DataFrame(sub_x_train, columns=ohe_feature_cols)
+
+            x_df = self.ohe_to_ladder(ohe_df)
 
             # Update the testing dataset with these results
             x_test = x_test.drop_features([self.feature])
@@ -275,32 +369,58 @@ class LadderEncoding(FittedDataHook):
             raise NotImplementedError("Ladder Encoding only makes sense in the context of a multi-feature dataset!")
         return train_out, test_out
 
-    def ladder_encode(self, tmp_x):
+
+    def ohe_to_ladder(self, x_df: pd.DataFrame):
         """
-        Uses the np.cumsum trick to convert a One-Hot-Encoded dataset into a Ladder encoded one
+        Uses the CumSum trick to convert a One-Hot-Encoded dataset into a Ladder encoded one
+
+        :param x_df: The one-hot-encoded form of the dataset you want to encode, encoded using the OneHotEncoder
+            managed by an instance of this class and formatted as a dense pandas DataFrame
         """
-        # Generate the OHE feature names to help with iteration
-        ohe_feature_cols = self.backing_ohe_encoder.get_feature_names_out([self.feature])
+        # Cache a set-formatted version of the columns in the provided dataframe for later re-use
+        x_df_col_set = set(x_df.columns)
 
-        # Convert our matrix into a dataframe for sanity’s sake
-        x_df = pd.DataFrame(tmp_x, columns=ohe_feature_cols)
+        # Iterate through the fitted groups for this model to pool them into "rungs" on the ladder
+        ladder_dict = {}
+        prior_group_str = None
+        for g in self.order_groups:
+            # Generate a union of the group's contents and the contents of the OHE columns to avoid invalid queries
+            joint_cols = list(set(g).intersection(x_df_col_set))
 
-        # Re-order the dataframe into the user specified order
-        x_df = x_df.loc[:, [f"{self.feature}_{c}" for c in self.order]]
+            # Isolate these groups from the rest of the data
+            rung_df = x_df.loc[:, joint_cols]
 
-        # Use the CumSum trick to format it into a proper "ladder" encode
-        x_df = np.cumsum(x_df, axis=1)
+            # Use panda's "any" check to generate pool all columns into a single one
+            rung_val = rung_df.any(axis="columns")
 
-        # # Re-label the columns to make it clear that they now represent a "step" between classes
-        # new_feature_cols = []
-        # for i, c in enumerate(self.order):
-        #     # First case is "special", as it represents the "base" instead
-        #     if i == 0:
-        #         new_feature_cols.append(f'{self.feature}_({c})')
-        #     # Everything else is a "step"
-        #     else:
-        #         new_feature_cols.append(f'{self.feature}_({self.order[i - 1]} -> {c})')
-        # x_df.columns = new_feature_cols
+            # Generate a string representing the combination of columns which will be grouped
+            group_str = "|".join(g)
+
+            # Generate the corresponding column's name, but only if we had a prior group (the first col will be dropped)
+            col_name = ""
+            if prior_group_str is not None:
+                col_name = f"{self.feature} ({prior_group_str} <- {group_str})"
+
+            # Save this result into the dictionary for later
+            ladder_dict[col_name] = rung_val
+
+            # Update the prior group's label
+            prior_group_str = group_str
+
+        # Convert this dictionary into a proper dataframe for ease of use
+        ladder_df = pd.DataFrame.from_dict(ladder_dict)
+
+        # Drop the first (base) column to avoid a homogenous final column
+        ladder_df = ladder_df.iloc[:, 1:]
+
+        # Reverse the column order before applying cumsum
+        ladder_df = ladder_df.iloc[:, ::-1]
+
+        # Apply CumSum again to finalize the ladder encoding
+        ladder_df = np.cumsum(ladder_df, axis=1)
+
+        # Reverse the column order back to the original
+        ladder_df = ladder_df.iloc[:, ::-1]
 
         # Return the result
-        return x_df
+        return ladder_df

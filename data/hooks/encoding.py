@@ -206,10 +206,17 @@ class LadderEncoding(FittedDataHook):
         )
         # Have the user define the order of the ladder explicitly;
         #  this needs to provided for a LadderEncode to make sense!
-        self.order = parse_data_config_entry(
-            "order", config,
-            is_list(self.logger)
+        order = parse_data_config_entry(
+            "order", config
         )
+        if type(order) is not list:
+            raise ValueError("Ladder encoding needs a list of ordinal values, in the desired order, to function. "
+                             f"Value of the data config was of type '{type(order)}'.")
+        if len(order) < 2:
+            raise ValueError("To ladder encode data, at least 2 values must be provided in the 'order' argument. "
+                             f"The provided list had {len(order)} value(s) instead.")
+        self.order = order
+
         # We handle min-frequency detection ourselves, to avoid the creation of an "infrequent" column which has no
         #  position in the order
         self.min_frequency = parse_data_config_entry(

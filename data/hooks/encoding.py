@@ -15,6 +15,34 @@ from data.mixins import MultiFeatureMixin
 
 @registered_data_hook("one_hot_encode")
 class OneHotEncoding(FittedDataHook):
+    """
+    Modified implementation of SciKit-Learn's OneHotEncoder to allow it to function in the context of data of mixed
+        categorical/continuous features. Which features it will be applied to can be specified with two configuration
+        parameters:
+
+    * `features`: A list of features within the dataset which should explicitly be treated as categorical and encoded
+        using this data hook
+    * `max_unique_vals`: An integer threshold; if a feature within the dataset has fewer than this many unique
+        values across all samples is assumed to be "categorical", and is encoded.
+
+    How the resulting data is encoded is otherwise identical to SciKit's implementation; its parameters can be specified
+    like any other config option (see "handle_unknown" in the example below).
+
+    Example usage:
+    {
+        "type": "one_hot_encode",
+        "features": ["color"],
+        "max_unique_vals": 5,
+        "handle_unknown: "ignore"
+    }
+    In the case of a binary variable:
+        {
+        "type": "one_hot_encode",
+        "features": ["sex"],
+        "drop": "if_binary",
+        "handle_unknown": "warn"
+    }
+    """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)
 
@@ -97,7 +125,10 @@ class OneHotEncoding(FittedDataHook):
 
     def update_tracked_features(self, x):
         """
-        Identifies and generates the list of features which should be OneHotEncoded
+        Identifies and generates the list of features which should be OneHotEncoded. This is tracked internally within
+            the data hook, and simply merges the explicitly defined and implicitly detected categorical features into
+            a single, easier to work with list.
+
         :param x: The data to use for automated feature detection via unique value counting
         :return: The list of features which need to OneHotEncoded by this data hook for the given dataset
         """
@@ -119,10 +150,34 @@ class OneHotEncoding(FittedDataHook):
 
 @registered_data_hook("ordinal_encode")
 class OrdinalEncoding(FittedDataHook):
+    """
+    Modified implementation of SciKit-Learn's OrdinalEncoder to allow it to function in the context of data of mixed
+        categorical/continuous features. The following additional/modified parameters are available to accomplish
+        this:
+
+    * `features`: A list of features within the dataset which should explicitly be treated as categorical and encoded
+        using this data hook
+    * `categories`: A list, or list of lists (if multiple features were specified) designating the order the labels
+        should be ordered in (i.e. setting it to ["A", "C", "B"] would result in the data ["A", "B", "C"] being encoded
+        as [0, 2, 1], rather than the default [0, 1, 2]). Unlike the base implementation of OrdinalEncoder, this is
+        required in this context, as otherwise the randomized splitting of the input data can result in some different
+        replicates having the same label for different initial classes (i.e. in replicate one, class "A" is labelled
+        as 1, but in replicate two it gets labelled as 2).
+
+    How the resulting data is encoded is otherwise identical to SciKit's implementation.
+
+    Example usage:
+    {
+        "type": "ordinal_encode",
+        "features": ["size"],
+        "categories": ["small", "medium", "large"],
+        "handle_unknown: "ignore"
+    }
+    """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)
 
-        # Grab an explicit list of columns, if they were defined
+        # Grab an explicit list of features, if they were defined
         self.explicit_features = parse_data_config_entry(
             "features", config,
             default_as([], self.logger), is_list(self.logger)
@@ -194,9 +249,73 @@ class OrdinalEncoding(FittedDataHook):
 @registered_data_hook("ladder_encode")
 class LadderEncoding(FittedDataHook):
     """
-    Extension of one-hot-encoding which allows for a specified order to be preserved
+    A niche extension of one-hot-encoding which allows for a user specified order to be preserved without enforcing that
+        the step size between each class is the same. For why this is valuable, consider the following example:
+
+    ['small', 'medium', 'small', 'large', 'medium', 'small']
+
+    By default, applying the One-Hot encoding to it would result in the following:
+
+    --------------------------
+    | small | medium | large |
+    --------------------------
+    |   1   |   0    |   0   |
+    |   0   |   1    |   0   |
+    |   1   |   0    |   0   |
+    |   0   |   0    |   1   |
+    |   0   |   1    |   0   |
+    |   1   |   0    |   0   |
+    --------------------------
+
+    This does not preserve any order in the data; label encoding it creates a different problem
+
+    --------
+    | size |
+    --------
+    |   0  |
+    |   1  |
+    |   0  |
+    |   2  |
+    |   1  |
+    |   0  |
+    --------
+
+    Namely, while order is now preserved, the "step" between each category is now required to be identical (as the
+        difference between each class is 1). Ladder encoding attempts to act as a middle ground by preserving the
+        column-wise stratification of one-hot encoding, while forcing the underlying ML model to make their effects
+        additive to one another:
+
+    --------------------------
+    | small | medium | large |
+    --------------------------
+    |   1   |   1    |   1   |
+    |   0   |   1    |   1   |
+    |   1   |   1    |   1   |
+    |   0   |   0    |   1   |
+    |   0   |   1    |   1   |
+    |   1   |   1    |   1   |
+    --------------------------
+
+    It requires two configuration parameters to be used:
+
+    * `feature`: The feature you want to ladder encode
+    * `order`: The order the features should be encoded in (that is, how the ladder will be formed).
+
+    Aside from these params, it can accept any parameter that the SciKit-Learn implementation of OneHotEncoder accepts. For example:
+    
+    * `min_frequency`: Any value which is present in less than this number (if int) or proportion (if float) of samples in the dataset are treated as part of the 'infrequent' class during encoding, rather than receiving their own encoded feature.
+
+    Example usage:
+    {
+        "type": "ladder_encode",
+        "feature": "size",
+        "order": ["small", "medium", "large"],
+        "min_frequency": 0.3,
+        "handle_unknown": "warn"
+    }
     """
     def __init__(self, config: dict, **kwargs):
+        # TODO: Allow this to handle multiple features simultaneously
         super().__init__(config, **kwargs)
 
         # Grab an explicit list of columns, if they were defined

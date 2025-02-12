@@ -13,6 +13,20 @@ from data.mixins import MultiFeatureMixin
 
 @registered_data_hook("imputation_simple")
 class SimpleImputation(FittedDataHook):
+    """
+    Imputes missing data through "simple" strategies, including mean, median, most common, and constant fill.
+
+    Utilizes SciKit-Learn's SimpleImputer implementation. As such, aside from the addition of a "features" argument
+        to allow the user to specify a set of feature they want the imputation applied to, its implementation and
+        use here is identical.
+
+    Example usage:
+    {
+      "type": "imputation_simple",
+      "features": ["color", "species"],
+      "strategy": "most_common"
+    }
+    """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config=config, **kwargs)
         # Grab an explicit list of columns, if they were defined

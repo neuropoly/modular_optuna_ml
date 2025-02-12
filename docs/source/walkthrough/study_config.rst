@@ -1,7 +1,9 @@
 Study Design and Configuration
 ==============================
 
-Initial Configuration Set-Up
+.. _study-config-walkthrough:
+
+Study Configuration Set-Up
 ----------------------------
 
 Same as before, we will start by defining how we want runs using this study configuration to be labelled:

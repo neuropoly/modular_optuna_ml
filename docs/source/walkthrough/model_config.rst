@@ -1,7 +1,7 @@
 Model Configuration and Automatic Tuning
 ========================================
 
-Initial Configuration Set-Up
+Model Configuration Set-Up
 ----------------------------
 
 Like before, lets first consider the model we want to tune. For the sake of simplicity, we will be tuning a classic Logistic Regression with L2 regularization. For now we'll explicitly set the L2 penalty (``l2_c``) for the sake of demonstration; skip to :ref:`model_hyper_parameter_tuning` if you want to see how to enable Optuna's hyperparameter tuning.

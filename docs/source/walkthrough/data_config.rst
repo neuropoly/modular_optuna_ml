@@ -48,7 +48,7 @@ Any arguments past these three will be specific to the format you specified; thi
 
 .. admonition:: Why No Target?
 
-    You may have noticed the lack of a way to designate which column in the dataset is the "target" feature; it is instead handled by the study configuration file (see **TODO**). Why?
+    You may have noticed the lack of a way to designate which column in the dataset is the "target" feature; it is instead handled by the study configuration file (see :ref:`study-config-walkthrough`). Why?
 
     The primary reason is that subsequent MOOP runs using the same study configuration will also write their output to the same database output. If the 'target' metric were defined in the data configuration, this could result in mixing the results of analyses with different objectives (i.e. identifying an allergy to peanuts vs. post-surgical outcomes) into a single file, without it being apparent that this had happened. Therefore, while somewhat unintuitive, the 'target' of a study (and the objective function which will be used to evaluate the model's ability to predict it) was placed in the study configuration file instead.
 

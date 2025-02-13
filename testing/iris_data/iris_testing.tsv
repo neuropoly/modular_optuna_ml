@@ -1,151 +1,151 @@
-id	sepal length (cm)	sepal width (cm)	petal length (cm)	petal width (cm)	color	target	size
-1a	5.1	3.5	1.4	0.2	white	0	medium
-2	4.9	3	1.4	0.2	white	0	medium
-4	4.7	3.2	1.3		white	0	large
-5	4.6	3.1	1.5		white	0	large
-7b	5	3.6		0.2	white	0	medium
-8	5.4	3.9	1.7	0.4	white	0	medium
-10	4.6		1.4	0.3	white	0	large
-11	5	3.4	1.5	0.2	white	0	small
-12	4.4	2.9	1.4	0.2	white	0	small
-13	4.9	3.1	1.5	0.1	white	0	medium
-14	5.4	3.7	1.5	0.2	white	0	medium
-15	4.8	3.4	1.6	0.2	pink	0	large
-17	4.8	3	1.4	0.1	white	0	medium
-18			1.1	0.1	white	0	medium
-19	5.8	4	1.2	0.2	white	0	small
-20	5.7	4.4	1.5	0.4	pink	0	medium
-21	5.4	3.9	1.3	0.4	white	0	large
-23	5.1	3.5	1.4	0.3	white	0	small
-25	5.7	3.8	1.7	0.3	pink	0	large
-26	5.1	3.8	1.5	0.3	white	0	large
-27	5.4	3.4	1.7	0.2	white	0	small
-29	5.1	3.7	1.5	0.4	white	0	large
-31	4.6	3.6	1	0.2	white	0	small
-33	5.1	3.3	1.7	0.5	pink	0	large
-35	4.8	3.4	1.9	0.2	white	0	medium
-37	5	3	1.6	0.2	white	0	large
-38	5	3.4	1.6	0.4	white	0	small
-40	5.2	3.5	1.5	0.2	white	0	large
-41	5.2	3.4	1.4	0.2	white	0	medium
-42	4.7	3.2	1.6	0.2	pink	0	large
-43	4.8		1.6	0.2	white	0	small
-45	5.4	3.4	1.5	0.4	white	0	small
-47	5.2	4.1	1.5	0.1	white	0	small
-48	5.5	4.2	1.4	0.2	white	0	small
-50	4.9		1.5	0.2	pink	0	small
-51	5	3.2		0.2	pink	0	small
-53	5.5	3.5	1.3	0.2	white	0	small
-54	4.9	3.6	1.4	0.1	white	0	large
-55	4.4	3	1.3	0.2	white	0	medium
-56	5.1	3.4	1.5	0.2	white	0	small
-57	5	3.5	1.3	0.3		0	large
-59	4.5	2.3	1.3	0.3	white	0	medium
-61	4.4	3.2	1.3	0.2		0	medium
-62	5	3.5	1.6	0.6	white	0	small
-63	5.1	3.8	1.9	0.4	pink	0	medium
-65	4.8	3	1.4		white	0	large
-66	5.1	3.8	1.6	0.2	white	0	large
-68	4.6	3.2	1.4	0.2	white	0	large
-70	5.3	3.7	1.5	0.2	white	0	small
-71	5	3.3	1.4	0.2	white	0	large
-72	7	3.2	4.7	1.4	pink	1	medium
-74	6.4	3.2	4.5	1.5	pink	1	small
-76	6.9	3.1	4.9	1.5	pink	1	medium
-78	5.5	2.3	4	1.3	pink	1	large
-80	6.5	2.8	4.6	1.5	pink	1	large
-81	5.7	2.8	4.5	1.3	purple	1	large
-82		3.3	4.7	1.6	pink	1	small
-84	4.9	2.4	3.3	1	pink	1	small
-85		2.9	4.6	1.3	pink	1	medium
-86	5.2	2.7	3.9	1.4	purple	1	large
-88	5	2	3.5	1	purple	1	large
-90	5.9	3	4.2		pink	1	medium
-91	6	2.2	4	1	pink	1	medium
-93	6.1	2.9	4.7	1.4	pink	1	small
-95	5.6	2.9	3.6		pink	1	large
-97	6.7	3.1	4.4	1.4		1	large
-99	5.6	3	4.5	1.5	pink	1	medium
-101	5.8	2.7		1	pink	1	large
-102	6.2	2.2	4.5	1.5	pink	1	large
-104	5.6	2.5	3.9	1.1	purple	1	large
-105	5.9	3.2	4.8	1.8	pink	1	small
-106	6.1	2.8	4	1.3	pink	1	medium
-108	6.3	2.5		1.5	pink	1	large
-110	6.1	2.8	4.7	1.2	pink	1	small
-112	6.4	2.9	4.3	1.3	pink	1	medium
-113	6.6	3	4.4	1.4	purple	1	small
-115	6.8	2.8	4.8	1.4	purple	1	medium
-116	6.7	3	5	1.7	purple	1	small
-118	6	2.9	4.5	1.5	pink	1	medium
-120		2.6		1	pink	1	large
-122	5.5	2.4	3.8	1.1	pink	1	large
-124	5.5	2.4	3.7	1	pink	1	large
-125	5.8	2.7	3.9	1.2		1	small
-127		2.7	5.1	1.6	purple	1	small
-128	5.4	3	4.5	1.5	pink	1	medium
-129	6	3.4	4.5	1.6	pink	1	large
-130	6.7	3.1	4.7	1.5	purple	1	medium
-131	6.3		4.4	1.3	pink	1	small
-133	5.6	3	4.1	1.3	pink	1	medium
-135	5.5	2.5	4	1.3	pink	1	large
-136	5.5	2.6	4.4	1.2	purple	1	small
-138		3	4.6	1.4	pink	1	medium
-140	5.8	2.6	4	1.2	pink	1	large
-142	5	2.3	3.3	1	pink	1	medium
-143	5.6	2.7	4.2	1.3	pink	1	medium
-144	5.7	3	4.2	1.2	purple	1	medium
-146	5.7	2.9	4.2	1.3	pink	1	medium
-148	6.2	2.9	4.3	1.3	pink	1	large
-150		2.5	3	1.1	pink	1	large
-151	5.7	2.8	4.1	1.3	pink	1	small
-153	6.3	3.3	6	2.5		2	medium
-154	5.8			1.9	purple	2	small
-156	7.1	3	5.9	2.1	pink	2	small
-158	6.3	2.9	5.6	1.8	purple	2	small
-160	6.5	3		2.2	purple	2	large
-161	7.6	3	6.6	2.1	pink	2	small
-162	4.9	2.5	4.5			2	small
-163	7.3	2.9	6.3	1.8	pink	2	small
-165	6.7	2.5	5.8	1.8	white	2	large
-166	7.2	3.6	6.1	2.5	pink	2	small
-168	6.5	3.2	5.1	2	purple	2	small
-170	6.4	2.7	5.3	1.9	purple	2	medium
-171	6.8	3	5.5	2.1	purple	2	large
-172	5.7	2.5	5	2	purple	2	large
-174	5.8	2.8	5.1	2.4	purple	2	small
-176	6.4	3.2	5.3	2.3	purple	2	small
-178	6.5	3	5.5	1.8	purple	2	medium
-179	7.7	3.8	6.7	2.2	purple	2	large
-181	7.7	2.6		2.3	white	2	large
-182	6	2.2	5	1.5	purple	2	large
-183	6.9	3.2	5.7	2.3		2	large
-185	5.6	2.8	4.9	2	white	2	large
-186	7.7	2.8	6.7	2	pink	2	medium
-188	6.3	2.7	4.9	1.8	purple	2	large
-190	6.7	3.3	5.7	2.1	purple	2	small
-191		3.2	6	1.8	purple	2	small
-193	6.2	2.8	4.8	1.8	purple	2	small
-194	6.1	3	4.9	1.8	pink	2	large
-196	6.4	2.8	5.6	2.1	purple	2	small
-198	7.2	3	5.8	1.6	pink	2	large
-199	7.4	2.8	6.1	1.9	purple	2	small
-200	7.9	3.8	6.4	2	pink	2	large
-202	6.4		5.6	2.2	purple	2	small
-203	6.3	2.8	5.1	1.5	purple	2	large
-204	6.1	2.6	5.6	1.4		2	medium
-206	7.7	3	6.1	2.3	purple	2	medium
-207	6.3	3.4	5.6	2.4	pink	2	small
-209	6.4	3.1	5.5	1.8	white	2	small
-211	6	3	4.8	1.8	pink	2	small
-212	6.9	3.1	5.4		white	2	small
-214	6.7		5.6	2.4	pink	2	large
-216	6.9	3.1	5.1	2.3	purple	2	small
-217	5.8	2.7	5.1	1.9	pink	2	small
-218	6.8	3.2	5.9	2.3	purple	2	small
-219	6.7	3.3	5.7	2.5	white	2	large
-221	6.7	3	5.2	2.3	pink	2	small
-222	6.3	2.5	5	1.9	pink	2	medium
-223	6.5	3	5.2	2	pink	2	small
-224	6.2	3.4	5.4		white	2	small
-226	5.9	3	5.1	1.8	purple	2	small
+id	sepal length (cm)	sepal width (cm)	petal length (cm)	petal width (cm)	color	target	size	flower_category
+1a	5.1	3.5	1.4	0.2	white	0	medium	small-flower
+2	4.9	3.0	1.4	0.2	white	0	medium	small-flower
+4	4.7	3.2	1.3		white	0	large	large-flower
+5	4.6	3.1	1.5		white	0	large	large-flower
+7b	5.0	3.6		0.2	white	0	medium	small-flower
+8	5.4	3.9	1.7	0.4	white	0	medium	small-flower
+10	4.6		1.4	0.3	white	0	large	large-flower
+11	5.0	3.4	1.5	0.2	white	0	small	small-flower
+12	4.4	2.9	1.4	0.2	white	0	small	small-flower
+13	4.9	3.1	1.5	0.1	white	0	medium	small-flower
+14	5.4	3.7	1.5	0.2	white	0	medium	small-flower
+15	4.8	3.4	1.6	0.2	pink	0	large	large-flower
+17	4.8	3.0	1.4	0.1	white	0	medium	small-flower
+18			1.1	0.1	white	0	medium	small-flower
+19	5.8	4.0	1.2	0.2	white	0	small	small-flower
+20	5.7	4.4	1.5	0.4	pink	0	medium	small-flower
+21	5.4	3.9	1.3	0.4	white	0	large	large-flower
+23	5.1	3.5	1.4	0.3	white	0	small	small-flower
+25	5.7	3.8	1.7	0.3	pink	0	large	large-flower
+26	5.1	3.8	1.5	0.3	white	0	large	large-flower
+27	5.4	3.4	1.7	0.2	white	0	small	small-flower
+29	5.1	3.7	1.5	0.4	white	0	large	large-flower
+31	4.6	3.6	1.0	0.2	white	0	small	small-flower
+33	5.1	3.3	1.7	0.5	pink	0	large	large-flower
+35	4.8	3.4	1.9	0.2	white	0	medium	small-flower
+37	5.0	3.0	1.6	0.2	white	0	large	large-flower
+38	5.0	3.4	1.6	0.4	white	0	small	small-flower
+40	5.2	3.5	1.5	0.2	white	0	large	large-flower
+41	5.2	3.4	1.4	0.2	white	0	medium	small-flower
+42	4.7	3.2	1.6	0.2	pink	0	large	large-flower
+43	4.8		1.6	0.2	white	0	small	small-flower
+45	5.4	3.4	1.5	0.4	white	0	small	small-flower
+47	5.2	4.1	1.5	0.1	white	0	small	small-flower
+48	5.5	4.2	1.4	0.2	white	0	small	small-flower
+50	4.9		1.5	0.2	pink	0	small	small-flower
+51	5.0	3.2		0.2	pink	0	small	small-flower
+53	5.5	3.5	1.3	0.2	white	0	small	small-flower
+54	4.9	3.6	1.4	0.1	white	0	large	large-flower
+55	4.4	3.0	1.3	0.2	white	0	medium	small-flower
+56	5.1	3.4	1.5	0.2	white	0	small	small-flower
+57	5.0	3.5	1.3	0.3		0	large	large-flower
+59	4.5	2.3	1.3	0.3	white	0	medium	small-flower
+61	4.4	3.2	1.3	0.2		0	medium	small-flower
+62	5.0	3.5	1.6	0.6	white	0	small	small-flower
+63	5.1	3.8	1.9	0.4	pink	0	medium	small-flower
+65	4.8	3.0	1.4		white	0	large	large-flower
+66	5.1	3.8	1.6	0.2	white	0	large	large-flower
+68	4.6	3.2	1.4	0.2	white	0	large	large-flower
+70	5.3	3.7	1.5	0.2	white	0	small	small-flower
+71	5.0	3.3	1.4	0.2	white	0	large	large-flower
+72	7.0	3.2	4.7	1.4	pink	1	medium	small-flower
+74	6.4	3.2	4.5	1.5	pink	1	small	small-flower
+76	6.9	3.1	4.9	1.5	pink	1	medium	small-flower
+78	5.5	2.3	4.0	1.3	pink	1	large	large-flower
+80	6.5	2.8	4.6	1.5	pink	1	large	large-flower
+81	5.7	2.8	4.5	1.3	purple	1	large	large-flower
+82		3.3	4.7	1.6	pink	1	small	small-flower
+84	4.9	2.4	3.3	1.0	pink	1	small	small-flower
+85		2.9	4.6	1.3	pink	1	medium	small-flower
+86	5.2	2.7	3.9	1.4	purple	1	large	large-flower
+88	5.0	2.0	3.5	1.0	purple	1	large	large-flower
+90	5.9	3.0	4.2		pink	1	medium	small-flower
+91	6.0	2.2	4.0	1.0	pink	1	medium	small-flower
+93	6.1	2.9	4.7	1.4	pink	1	small	small-flower
+95	5.6	2.9	3.6		pink	1	large	large-flower
+97	6.7	3.1	4.4	1.4		1	large	large-flower
+99	5.6	3.0	4.5	1.5	pink	1	medium	small-flower
+101	5.8	2.7		1.0	pink	1	large	large-flower
+102	6.2	2.2	4.5	1.5	pink	1	large	large-flower
+104	5.6	2.5	3.9	1.1	purple	1	large	large-flower
+105	5.9	3.2	4.8	1.8	pink	1	small	small-flower
+106	6.1	2.8	4.0	1.3	pink	1	medium	small-flower
+108	6.3	2.5		1.5	pink	1	large	large-flower
+110	6.1	2.8	4.7	1.2	pink	1	small	small-flower
+112	6.4	2.9	4.3	1.3	pink	1	medium	small-flower
+113	6.6	3.0	4.4	1.4	purple	1	small	small-flower
+115	6.8	2.8	4.8	1.4	purple	1	medium	small-flower
+116	6.7	3.0	5.0	1.7	purple	1	small	small-flower
+118	6.0	2.9	4.5	1.5	pink	1	medium	small-flower
+120		2.6		1.0	pink	1	large	large-flower
+122	5.5	2.4	3.8	1.1	pink	1	large	large-flower
+124	5.5	2.4	3.7	1.0	pink	1	large	large-flower
+125	5.8	2.7	3.9	1.2		1	small	small-flower
+127		2.7	5.1	1.6	purple	1	small	small-flower
+128	5.4	3.0	4.5	1.5	pink	1	medium	small-flower
+129	6.0	3.4	4.5	1.6	pink	1	large	large-flower
+130	6.7	3.1	4.7	1.5	purple	1	medium	small-flower
+131	6.3		4.4	1.3	pink	1	small	small-flower
+133	5.6	3.0	4.1	1.3	pink	1	medium	small-flower
+135	5.5	2.5	4.0	1.3	pink	1	large	large-flower
+136	5.5	2.6	4.4	1.2	purple	1	small	small-flower
+138		3.0	4.6	1.4	pink	1	medium	small-flower
+140	5.8	2.6	4.0	1.2	pink	1	large	large-flower
+142	5.0	2.3	3.3	1.0	pink	1	medium	small-flower
+143	5.6	2.7	4.2	1.3	pink	1	medium	small-flower
+144	5.7	3.0	4.2	1.2	purple	1	medium	small-flower
+146	5.7	2.9	4.2	1.3	pink	1	medium	small-flower
+148	6.2	2.9	4.3	1.3	pink	1	large	large-flower
+150		2.5	3.0	1.1	pink	1	large	large-flower
+151	5.7	2.8	4.1	1.3	pink	1	small	small-flower
+153	6.3	3.3	6.0	2.5		2	medium	small-flower
+154	5.8			1.9	purple	2	small	small-flower
+156	7.1	3.0	5.9	2.1	pink	2	small	small-flower
+158	6.3	2.9	5.6	1.8	purple	2	small	small-flower
+160	6.5	3.0		2.2	purple	2	large	large-flower
+161	7.6	3.0	6.6	2.1	pink	2	small	small-flower
+162	4.9	2.5	4.5			2	small	small-flower
+163	7.3	2.9	6.3	1.8	pink	2	small	small-flower
+165	6.7	2.5	5.8	1.8	white	2	large	large-flower
+166	7.2	3.6	6.1	2.5	pink	2	small	small-flower
+168	6.5	3.2	5.1	2.0	purple	2	small	small-flower
+170	6.4	2.7	5.3	1.9	purple	2	medium	small-flower
+171	6.8	3.0	5.5	2.1	purple	2	large	large-flower
+172	5.7	2.5	5.0	2.0	purple	2	large	large-flower
+174	5.8	2.8	5.1	2.4	purple	2	small	small-flower
+176	6.4	3.2	5.3	2.3	purple	2	small	small-flower
+178	6.5	3.0	5.5	1.8	purple	2	medium	small-flower
+179	7.7	3.8	6.7	2.2	purple	2	large	large-flower
+181	7.7	2.6		2.3	white	2	large	large-flower
+182	6.0	2.2	5.0	1.5	purple	2	large	large-flower
+183	6.9	3.2	5.7	2.3		2	large	large-flower
+185	5.6	2.8	4.9	2.0	white	2	large	large-flower
+186	7.7	2.8	6.7	2.0	pink	2	medium	small-flower
+188	6.3	2.7	4.9	1.8	purple	2	large	large-flower
+190	6.7	3.3	5.7	2.1	purple	2	small	small-flower
+191		3.2	6.0	1.8	purple	2	small	small-flower
+193	6.2	2.8	4.8	1.8	purple	2	small	small-flower
+194	6.1	3.0	4.9	1.8	pink	2	large	large-flower
+196	6.4	2.8	5.6	2.1	purple	2	small	small-flower
+198	7.2	3.0	5.8	1.6	pink	2	large	large-flower
+199	7.4	2.8	6.1	1.9	purple	2	small	small-flower
+200	7.9	3.8	6.4	2.0	pink	2	large	large-flower
+202	6.4		5.6	2.2	purple	2	small	small-flower
+203	6.3	2.8	5.1	1.5	purple	2	large	large-flower
+204	6.1	2.6	5.6	1.4		2	medium	small-flower
+206	7.7	3.0	6.1	2.3	purple	2	medium	small-flower
+207	6.3	3.4	5.6	2.4	pink	2	small	small-flower
+209	6.4	3.1	5.5	1.8	white	2	small	small-flower
+211	6.0	3.0	4.8	1.8	pink	2	small	small-flower
+212	6.9	3.1	5.4		white	2	small	small-flower
+214	6.7		5.6	2.4	pink	2	large	large-flower
+216	6.9	3.1	5.1	2.3	purple	2	small	small-flower
+217	5.8	2.7	5.1	1.9	pink	2	small	small-flower
+218	6.8	3.2	5.9	2.3	purple	2	small	small-flower
+219	6.7	3.3	5.7	2.5	white	2	large	large-flower
+221	6.7	3.0	5.2	2.3	pink	2	small	small-flower
+222	6.3	2.5	5.0	1.9	pink	2	medium	small-flower
+223	6.5	3.0	5.2	2.0	pink	2	small	small-flower
+224	6.2	3.4	5.4		white	2	small	small-flower
+226	5.9	3.0	5.1	1.8	purple	2	small	small-flower

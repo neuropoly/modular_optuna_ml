@@ -49,14 +49,14 @@ def iris_manager():
 
 def test_one_hot_encoding(iris_manager):
     """
-    Tests OneHotEncoding on the 'color' column.
+    Tests OneHotEncoding on the 'color' column with three unique values ('white', 'purple', 'pink') and 'nan'.
     """
     hook_cls = DATA_HOOKS.get('one_hot_encode', None)
     ohe = hook_cls.from_config(config={'features': ['color']})
     encoded = ohe.run(iris_manager.data_manager)
 
     cols = list(encoded.data.columns)
-    assert "color" not in cols
+    assert "color" not in cols  # 'color' column should be removed after encoding
 
     COLORS = [col.split('_')[-1] for col in cols if 'color' in col]     # There might be also 'nan'
     # Expect one-hot columns for each color ('white', 'purple', and 'pink'; plus 'nan')

@@ -79,6 +79,34 @@ def test_one_hot_encoding(iris_manager):
             else:
                 assert row[1][col] == 0
 
+def test_one_hot_encoding_binary(iris_manager):
+    """
+    Tests OneHotEncoding on the 'flower_category' column with two unique values ('small-flower', 'large-flower').
+    'drop' is set to 'if_binary' and 'handle_unknown' is set to 'warn'.
+    """
+    hook_cls = DATA_HOOKS.get('one_hot_encode', None)
+    ohe = hook_cls.from_config(config={'features': ['flower_category'],
+                                       "drop": "if_binary",
+                                       "handle_unknown": "warn"})
+    encoded = ohe.run(iris_manager.data_manager)
+
+    cols = list(encoded.data.columns)
+    assert "flower_category" not in cols  # 'flower_category' column should be removed after encoding
+
+    input_data = iris_manager.data_manager.data['flower_category'].rename('flower_category')
+    encoded_data = encoded.data['flower_category_small-flower'].rename('flower_category_small-flower')
+
+    # Combine input_data and encoded_data into a single DataFrame for easier comparison
+    combined = pd.concat([input_data, encoded_data], axis=1)
+    # Check that the encoding is correct
+    for row in combined.iterrows():
+        flower_category = row[1]['flower_category']
+        small_flower = row[1]['flower_category_small-flower']
+        if flower_category == 'small-flower':
+            assert small_flower == 1
+        else:
+            assert small_flower == 0
+
 def test_ordinal_encoding(iris_manager):
     """
     Tests OrdinalEncoding on the 'color' column.

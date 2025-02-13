@@ -1,3 +1,5 @@
+import os
+
 from copy import copy as shallow_copy
 from logging import Logger
 from typing import Optional, Self
@@ -32,6 +34,10 @@ class DumpHook(DataHook):
             "output_dest", config,
             default_as('./dumped.tsv', self.logger)
         )
+        output_folder = '/'.join(self.output_dest.split('/')[:-1])  # strip the filename
+        if output_folder and not os.path.exists(output_folder):
+            os.makedirs(output_folder, exist_ok=True)
+
         # Extract the output file suffix (tsv or csv); raise an error if it's not one of the two
         self.output_type = self.output_dest.split('.')[-1]
         if self.output_type not in ['tsv', 'csv']:

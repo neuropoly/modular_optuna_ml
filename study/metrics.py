@@ -143,3 +143,15 @@ def incorrect_samples(manager: OptunaModelManager, x: BaseDataManager, y: BaseDa
     bad_samples = clean_val_for_db(bad_samples)
 
     return bad_samples
+
+""" ROC Curve """
+def y_true_collector(_: OptunaModelManager, __: BaseDataManager, y: BaseDataManager):
+    """ Collects the true binary labels for ROC curve generation. """
+    return clean_val_for_db(list(y.as_array().flatten()))
+
+def y_pred_proba_collector(manager: OptunaModelManager, x: BaseDataManager, _: BaseDataManager):
+    """ Collects predicted probabilities for the positive class. """
+    py = manager.predict_proba(x.as_array())
+    if py.shape[1] != 2:
+        raise ValueError(f"Expected binary classification with two probability columns; found {py.shape[1]}.")
+    return clean_val_for_db(list(py[:, 1]))  # Probabilities for the positive class

@@ -128,27 +128,21 @@ def compute_weighted_feature_importance(best_models, metric):
 
     return weighted_importance_df
 
-def get_df_for_plotting(tables_dict, metric):
+def get_best_replicate(tables_dict, metric) -> None:
     """
-    Iterate over the dataframes in tables_dict and merge them into a single dataframe for plotting
+    Get the best replicate (i.e., best performing model) for each trail based on the specified metric.
+    Also, compute the weighted average of `importance_by_permutation (test)` features, with the weight being
+    the model's performance (e.g., `balanced_accuracy (test)`).
+    Save the best models and weighted feature importance to CSV files.
     :param tables_dict: dictionary with the tables (dataframes) from the database
-    :param metric: metric to plot; e.g., 'balanced_accuracy (test)'
-    :return: dataframe for plotting
+    :param metric: metric to use for selecting the best models; e.g., 'balanced_accuracy (test)'
     """
 
     os.makedirs('testing/output/csv', exist_ok=True)
     fname_out = f'testing/output/csv/{target}_{metric}_best_models'
 
-    df_plotting = pd.DataFrame(columns=['replicate', 'trial'])
-
     # Loop over individual models
     for model_name, df in tables_dict.items():
-        df_temp = df[['replicate', 'trial', metric]]
-        # Rename balanced_accuracy to model_name
-        df_temp = df_temp.rename(columns={metric: model_name})
-        # Add df_temp to df_plotting based on 'replicate' and 'trial'; do not replicate the 'replicate' and 'trial' columns
-        df_plotting = pd.merge(df_plotting, df_temp, on=['replicate', 'trial'], how='outer')
-
         # Get the best model (trial) for each replicate
         best_models = df.sort_values(metric, ascending=True).groupby('replicate').tail(1)
         # Sort by best_models by replicate
@@ -171,6 +165,25 @@ def get_df_for_plotting(tables_dict, metric):
 
     print(f"Saved best models to {fname_out}.csv")
     print(f"Saved weighted feature importance to {fname_out}_weighted_feature_importance.csv")
+
+
+def get_df_for_plotting(tables_dict, metric) -> pd.DataFrame:
+    """
+    Iterate over the dataframes in tables_dict and merge them into a single dataframe for plotting
+    :param tables_dict: dictionary with the tables (dataframes) from the database
+    :param metric: metric to plot; e.g., 'balanced_accuracy (test)'
+    :return: dataframe for plotting
+    """
+
+    df_plotting = pd.DataFrame(columns=['replicate', 'trial'])
+
+    # Loop over individual models
+    for model_name, df in tables_dict.items():
+        df_temp = df[['replicate', 'trial', metric]]
+        # Rename balanced_accuracy to model_name
+        df_temp = df_temp.rename(columns={metric: model_name})
+        # Add df_temp to df_plotting based on 'replicate' and 'trial'; do not replicate the 'replicate' and 'trial' columns
+        df_plotting = pd.merge(df_plotting, df_temp, on=['replicate', 'trial'], how='outer')
 
     # Some additional cleaning for plotting
     # Sort by 'replicate' and 'trial'
@@ -252,6 +265,8 @@ def main():
 
     #for metric in ['balanced_accuracy (test)', 'balanced_accuracy (validate)']:
     for metric in ['balanced_accuracy (test)']:
+        # Get the best replicate (i.e., best performing model) for each trial (train/test split)
+        get_best_replicate(tables_dict, metric)
         # Prepare the dataframe for plotting
         df_plotting = get_df_for_plotting(tables_dict, metric)
         # Plot the metric across trials for each model

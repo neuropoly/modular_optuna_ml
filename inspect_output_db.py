@@ -33,6 +33,14 @@ num_of_trials = 100
 models_to_keep = ['mri_metrics_hemorrhage_included', 'all_metrics_AIS_Initial_ladder_encoded',
                   'clinical_metrics_AIS_Initial_ladder_encoded']
 
+target_to_title_dict = {
+    'AIS_change_bin': 'AIS Change',
+    'UEMS_change_bin': 'UEMS Change',
+    'LEMS_change_bin': 'LEMS Change',
+    'AIS_change_bin_gt0': 'AIS Change'
+}
+
+
 def read_db(target):
     """
     Read tables from the database as dataframes
@@ -255,7 +263,7 @@ def plotting(df_plotting, metric):
     # sns.lineplot(data=agg_df, x='replicate', y='mean', hue='model_name')
     sns.lineplot(data=df_long, x='trial', y=metric, hue='model_name', errorbar='sd')
     # Customize the plot
-    plt.title(f'{target} -- Mean and Std of {metric_title} Across Replicates for Each Trial')
+    plt.title(f'{target_to_title_dict[target]}: Mean and Std of {metric_title} Across Replicates for Each Trial')
     plt.xlabel('Trial')
     plt.ylabel(metric_title)
     plt.legend(title='Model Name')
@@ -326,7 +334,7 @@ def plot_roc_curve(models_roc_data):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title(f'ROC (Receiver Operating Characteristic) for {target_to_title_disct[target]}')
+    plt.title(f'ROC (Receiver Operating Characteristic) for {target_to_title_dict[target]}')
     plt.legend(loc='lower right')
 
     # Save the plot

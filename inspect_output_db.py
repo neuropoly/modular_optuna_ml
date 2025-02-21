@@ -30,6 +30,8 @@ target='UEMS_change_bin'
 #target='SNL_Class_initial_bin'
 num_of_trials = 100
 
+models_to_keep = ['mri_metrics_hemorrhage_included', 'all_metrics_AIS_Initial_ladder_encoded',
+                  'clinical_metrics_AIS_Initial_ladder_encoded']
 
 def read_db(target):
     """
@@ -55,6 +57,11 @@ def read_db(target):
             print(f"Failed to read table {t}, ignoring it")
             continue
     con.close()
+
+    # Keep only the models we are interested in
+    for model_name in list(tables_dict.keys()):
+        if model_name.replace(f'{target}__LogisticRegression__', '') not in models_to_keep:
+            tables_dict.pop(model_name)
 
     return tables_dict
 

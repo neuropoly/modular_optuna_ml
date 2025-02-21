@@ -344,6 +344,53 @@ def plot_roc_curve(models_roc_data):
     plt.close()
 
 
+def plot_mean_std_roc_curve(best_models_dict):
+    """
+    Plot the mean ± std ROC curve for each model across replicates.
+    :param best_models_dict: dictionary with the best models for each model
+    """
+
+    plt.figure(figsize=(8, 6))
+    mean_fpr = np.linspace(0, 1, 100)
+
+    for model_name, df in best_models_dict.items():
+        model_name_cleaned = model_name.split('__')[-1]
+        tprs = []
+
+        # Extract ROC data for each replicate
+        for _, row in df.iterrows():
+            y_true = np.array(eval(row["y_true_collector (test)"]))
+            y_pred_proba = np.array(eval(row["y_pred_proba_collector (test)"]))
+
+            fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+            tprs.append(np.interp(mean_fpr, fpr, tpr))
+
+        # Calculate mean and std of TPRs
+        mean_tpr = np.mean(tprs, axis=0)
+        std_tpr = np.std(tprs, axis=0)
+        roc_auc = auc(mean_fpr, mean_tpr)
+
+        # Plot mean ROC curve with std deviation
+        plt.plot(mean_fpr, mean_tpr, label=f'{model_name_cleaned} (AUC = {roc_auc:.2f} ± {std_tpr.mean():.2f})')
+        plt.fill_between(mean_fpr, mean_tpr - std_tpr, mean_tpr + std_tpr, alpha=0.2)
+
+    # Plot baseline
+    plt.plot([0, 1], [0, 1], color='gray', linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'Mean ± Std ROC Curve for {target_to_title_dict[target]}')
+    plt.legend(loc='lower right')
+    plt.grid(True)
+    plt.tight_layout()
+    #plt.show()
+
+    # Save the plot
+    os.makedirs('testing/output/plots', exist_ok=True)
+    plt.savefig(f'testing/output/plots/{target}_roc_curve_mean.png', dpi=300)
+    print(f"Saved ROC curve to 'testing/output/plots/{target}_roc_curve_mean.png'")
+    plt.close()
+
+
 def main():
     # Read tables from the database as dataframes
     tables_dict = read_db(target)
@@ -352,6 +399,9 @@ def main():
     for metric in ['balanced_accuracy (test)']:
         # Get the best replicate (i.e., best performing model) for each trial (train/test split)
         best_models_dict = get_best_replicate(tables_dict, metric)
+
+        plot_mean_std_roc_curve(best_models_dict)
+
         models_roc_data = extract_roc_data(best_models_dict)
         if models_roc_data:
             plot_roc_curve(models_roc_data)

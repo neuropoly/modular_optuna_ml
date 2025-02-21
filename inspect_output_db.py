@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sqlite3 import connect
 
-from sqlalchemy.dialects.mssql.information_schema import columns
+from sklearn.metrics import roc_curve, auc
 
 #target='AIS_change_bin'
 target='UEMS_change_bin'
@@ -265,6 +265,69 @@ def plotting(df_plotting, metric):
     print(f"Saved plots to 'plots' directory")
     plt.close()
 
+def extract_roc_data(best_models_dict):
+    """
+    Extracts y_true and y_pred_proba from a dataframe.
+    """
+
+    models_roc_data = {}
+
+    for model_name, df in best_models_dict.items():
+        if "y_true_collector (test)" in df.columns and "y_pred_proba_collector (test)" in df.columns:
+            y_true_all = []
+            y_pred_proba_all = []
+            for y_true_str, y_pred_proba_str in zip(df["y_true_collector (test)"], df["y_pred_proba_collector (test)"]):
+                try:
+                    y_true = np.array(eval(y_true_str))
+                    y_pred_proba = np.array(eval(y_pred_proba_str))
+                    y_true_all.extend(y_true)
+                    y_pred_proba_all.extend(y_pred_proba)
+                except Exception as e:
+                    print(f"Error parsing y_true/y_pred_proba: {e}")
+                    continue
+
+            models_roc_data[model_name] = (np.array(y_true_all), np.array(y_pred_proba_all))
+
+    return models_roc_data
+
+def plot_roc_curve(models_roc_data):
+    """
+    Generates and saves a ROC curve with multiple models.
+
+    :param models_roc_data: Dictionary where keys are model names, and values are (y_true, y_pred_proba).
+    """
+
+    plt.figure(figsize=(8, 6))
+
+    for model_name, (y_true, y_pred_proba) in models_roc_data.items():
+        model_name = model_name.replace(f'{target}__LogisticRegression__', '')
+        if len(y_true) == 0 or len(y_pred_proba) == 0:
+            print(f"Skipping ROC for {model_name} due to missing data.")
+            continue
+
+        # Compute ROC curve
+        fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+        roc_auc = auc(fpr, tpr)
+
+        # Plot each model’s ROC curve
+        plt.plot(fpr, tpr, lw=2, label=f'{model_name} (AUC = {roc_auc:.2f})')
+
+    # Plot random classifier baseline
+    plt.plot([0, 1], [0, 1], color='gray', linestyle='--')
+
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC (Receiver Operating Characteristic) for {target_to_title_disct[target]}')
+    plt.legend(loc='lower right')
+
+    # Save the plot
+    os.makedirs('testing/output/plots', exist_ok=True)
+    plt.savefig(f'testing/output/plots/{target}_roc_curve.png', dpi=300)
+    print(f"Saved ROC curve to 'testing/output/plots/{target}_roc_curve.png'")
+    plt.close()
+
 
 def main():
     # Read tables from the database as dataframes
@@ -274,6 +337,12 @@ def main():
     for metric in ['balanced_accuracy (test)']:
         # Get the best replicate (i.e., best performing model) for each trial (train/test split)
         best_models_dict = get_best_replicate(tables_dict, metric)
+        models_roc_data = extract_roc_data(best_models_dict)
+        if models_roc_data:
+            plot_roc_curve(models_roc_data)
+        else:
+            print("Skipping ROC curve generation: No valid data found.")
+
         # Prepare the dataframe for plotting
         df_plotting = get_df_for_plotting(tables_dict, metric)
         # Plot the metric across trials for each model

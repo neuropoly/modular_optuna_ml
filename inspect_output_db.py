@@ -128,7 +128,7 @@ def compute_weighted_feature_importance(best_models, metric):
 
     return weighted_importance_df
 
-def get_best_replicate(tables_dict, metric) -> None:
+def get_best_replicate(tables_dict, metric) -> dict:
     """
     Get the best replicate (i.e., best performing model) for each trail based on the specified metric.
     Also, compute the weighted average of `importance_by_permutation (test)` features, with the weight being
@@ -136,10 +136,13 @@ def get_best_replicate(tables_dict, metric) -> None:
     Save the best models and weighted feature importance to CSV files.
     :param tables_dict: dictionary with the tables (dataframes) from the database
     :param metric: metric to use for selecting the best models; e.g., 'balanced_accuracy (test)'
+    :return: dictionary of dataframes with the best models for each model
     """
 
     os.makedirs('testing/output/csv', exist_ok=True)
     fname_out = f'testing/output/csv/{target}_{metric}_best_models'
+
+    best_models_dict = {}
 
     # Loop over individual models
     for model_name, df in tables_dict.items():
@@ -155,6 +158,8 @@ def get_best_replicate(tables_dict, metric) -> None:
         best_models[['model_name', 'replicate', 'trial', metric, 'importance_by_permutation (test)']].to_csv(
             f'{fname_out}.csv', mode='a', index=False, header=True)
 
+        best_models_dict[model_name] = best_models
+
         # Compute weighted average of `importance_by_permutation (test)` features, with the weight being the model's
         # performance (e.g., `balanced_accuracy (test)`)
         weighted_importance_df = compute_weighted_feature_importance(best_models, metric)
@@ -165,6 +170,8 @@ def get_best_replicate(tables_dict, metric) -> None:
 
     print(f"Saved best models to {fname_out}.csv")
     print(f"Saved weighted feature importance to {fname_out}_weighted_feature_importance.csv")
+
+    return best_models_dict
 
 
 def get_df_for_plotting(tables_dict, metric) -> pd.DataFrame:
@@ -266,7 +273,7 @@ def main():
     #for metric in ['balanced_accuracy (test)', 'balanced_accuracy (validate)']:
     for metric in ['balanced_accuracy (test)']:
         # Get the best replicate (i.e., best performing model) for each trial (train/test split)
-        get_best_replicate(tables_dict, metric)
+        best_models_dict = get_best_replicate(tables_dict, metric)
         # Prepare the dataframe for plotting
         df_plotting = get_df_for_plotting(tables_dict, metric)
         # Plot the metric across trials for each model

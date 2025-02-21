@@ -334,7 +334,7 @@ def plot_roc_curve(models_roc_data):
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title(f'ROC (Receiver Operating Characteristic) for {target_to_title_dict[target]}')
+    plt.title(f'{target_to_title_dict[target]}: ROC (Receiver Operating Characteristic)')
     plt.legend(loc='lower right')
 
     # Save the plot
@@ -378,7 +378,7 @@ def plot_mean_std_roc_curve(best_models_dict):
     plt.plot([0, 1], [0, 1], color='gray', linestyle='--')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title(f'Mean ± Std ROC Curve for {target_to_title_dict[target]}')
+    plt.title(f'{target_to_title_dict[target]}: Mean ± Std ROC Curve')
     plt.legend(loc='lower right')
     plt.grid(True)
     plt.tight_layout()

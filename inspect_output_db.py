@@ -305,12 +305,13 @@ def extract_roc_data(best_models_dict):
 
     return models_roc_data
 
-def plot_roc_curve(models_roc_data):
+def plot_roc_curve(models_roc_data, metric):
     """
     Generates and saves a ROC curve with multiple models.
-
     :param models_roc_data: Dictionary where keys are model names, and values are (y_true, y_pred_proba).
     """
+
+    metric_fname = metric.replace(' ', '_').replace('(', '').replace(')', '')  # e.g., balanced_accuracy_test
 
     plt.figure(figsize=(8, 6))
 
@@ -338,17 +339,21 @@ def plot_roc_curve(models_roc_data):
     plt.legend(loc='lower right')
 
     # Save the plot
+    fname_figure = f'testing/output/plots/{target}_{metric_fname}_roc_curve.png'
     os.makedirs('testing/output/plots', exist_ok=True)
-    plt.savefig(f'testing/output/plots/{target}_roc_curve.png', dpi=300)
-    print(f"Saved ROC curve to 'testing/output/plots/{target}_roc_curve.png'")
+    plt.savefig(fname_figure, dpi=300)
+    print(f"Saved ROC curve to {fname_figure}")
     plt.close()
 
 
-def plot_mean_std_roc_curve(best_models_dict):
+def plot_mean_std_roc_curve(best_models_dict, metric):
     """
     Plot the mean ± std ROC curve for each model across replicates.
     :param best_models_dict: dictionary with the best models for each model
+    :param metric: metric to use for selecting the best models; e.g., 'balanced_accuracy (test)'
     """
+
+    metric_fname = metric.replace(' ', '_').replace('(', '').replace(')', '')   # e.g., balanced_accuracy_test
 
     plt.figure(figsize=(8, 6))
     mean_fpr = np.linspace(0, 1, 100)
@@ -386,8 +391,9 @@ def plot_mean_std_roc_curve(best_models_dict):
 
     # Save the plot
     os.makedirs('testing/output/plots', exist_ok=True)
-    plt.savefig(f'testing/output/plots/{target}_roc_curve_mean.png', dpi=300)
-    print(f"Saved ROC curve to 'testing/output/plots/{target}_roc_curve_mean.png'")
+    fname_figure = f'testing/output/plots/{target}_{metric_fname}_roc_curve_mean.png'
+    plt.savefig(fname_figure, dpi=300)
+    print(f"Saved ROC curve to {fname_figure}")
     plt.close()
 
 
@@ -400,11 +406,11 @@ def main():
         # Get the best replicate (i.e., best performing model) for each trial (train/test split)
         best_models_dict = get_best_replicate(tables_dict, metric)
 
-        plot_mean_std_roc_curve(best_models_dict)
+        plot_mean_std_roc_curve(best_models_dict, metric)
 
         models_roc_data = extract_roc_data(best_models_dict)
         if models_roc_data:
-            plot_roc_curve(models_roc_data)
+            plot_roc_curve(models_roc_data, metric)
         else:
             print("Skipping ROC curve generation: No valid data found.")
 

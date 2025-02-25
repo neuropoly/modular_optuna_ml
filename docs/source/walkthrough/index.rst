@@ -9,3 +9,4 @@ If you're new to MOOP, following this tutorial is a good place to start.
     data_config
     model_config
     study_config
+    results

@@ -1,5 +1,5 @@
-Getting and Interpreting Results
-================================
+Results at Last!
+================
 
 Assuming you now have a data, model, and study configuration file, running MOOP is as simple as running the following command:
 
@@ -14,16 +14,10 @@ MOOP will handle the rest, outputting and saving the results to the SQLite datab
     By default MOOP will not overwrite existing results placed in the same output file; this is to prevent accidentally deleting the results of any analyses you ran prior which you might have want to keep. To get around this, you can either move the results file to a new location (allowing MOOP to generate a new results file with the newer analyses results in its place), or add the `--overwrite` flag to prior command. The latter will delete the prior results as MOOP initiates, however, so be careful!
 
 
-Interpreting the Results
-------------------------
+Parsing your Results
+--------------------
 
-.. attention::
-
-    Currently, all result interpretation must be done manually by you! This tutorial will document common analyses in that vein, but you should consider alternative solutions depending on your use case.
-
-    MOOP is also still in development, with "automated" methods of result interpretation and visualization planned. As such, like the code itself, these tutorials are subject to change; apologies in advance!
-
-Pulling Results from the DataBase
+Pulling Results from the Database
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once MOOP has completed its study, you should now have a SQLite database file placed in the location you requested in the study configuration file. Naturally, the first step to interpreting the results is to load them; we'll use Pandas for this. Assuming you have not changed your directory after you finished the MOOP run, the following should load the results of each MOOP run into a Pandas DataFrame, with one row per study:
@@ -57,10 +51,143 @@ We now have a list of all MOOP analyses contained within the database. If you ra
     :header-rows: 1
 
 
-
-Single-Run Analysis
+Inspecting the Data
 ^^^^^^^^^^^^^^^^^^^
 
-Assuming you use configuration files with the labels we defined previously, one of the entries in "moop_runs" Series should be "walkthrough_data__tutorial_logreg__tutorial_study". To load the results of that specific MOOPs run, we can run the following:
+The results dataframe are split into 3 sections:
 
-adfasdfadsf
+* The study index, containing the study replicate and Optuna trial indices.
+* The objective value of the model at this point in hyperparameter tuning. By default, Optuna optimizes for a lower value; as such, if this tool is running correctly, this should decrease overall as the trial number increases
+* Columns denoting other metrics you requested to collect, each denoted as ``{metric_name} ({sampling time})`` (i.e. ``balanced_accuracy (test)``)
+
+Each of these can be sampled from the dataframe as if it were any other columns. For example, to isolate the balanced accuracy scores at test-time, the following query could be used:
+
+.. code-block:: python
+
+    tutorial_df.loc[:, 'balanced_accuracy (test)']
+
+Likewise, all other pandas dataframe work as expected, allowing for sorting and grouping of the data by these values. For example, to query the best performing model per replicate (as evaluate by minimum loss), the following could be used:
+
+.. code-block:: python
+
+    best_models_per_replicate = tutorial_df.sort_values('loss', ascending=False).groupby('replicate').tail(1)
+
+Common Analyses
+---------------
+
+.. attention::
+
+    Currently, all result interpretation must be done manually by you! This tutorial will document common analyses in that vein, but you should consider alternative solutions depending on your use case.
+
+    MOOP is also still in development, with "automated" methods of result interpretation and visualization planned. As such, like the code itself, these tutorials are subject to change; apologies in advance!
+
+Performance over Trials
+^^^^^^^^^^^^^^^^^^^^^^^
+
+For the sake of not wasting time or computational resources, plotting the performance of your model across trials can help identify the 'ideal' number of trials to use before further performance begin to "plateau". We'll also plot the standard deviation to evaluate the stability.
+
+To do this, first sort and group the data by the trial index:
+
+.. code-block:: python
+
+    trial_grouped = tutorial_df.sort_values('trial', ascending=True).groupby('trial')
+
+We then take the mean and standard deviation of our desired metric ('loss' in this case) to get the to-be-plotted values
+
+.. code-block:: python
+
+    mean_by_trial = trial_grouped['objective'].mean()
+    std_by_trial = trial_grouped['objective'].std()
+
+These can now be plotted, using the `std` as an "error" around the average performance:
+
+.. code-block:: python
+
+    from matplotlib import pyplot as plt
+
+    # Initiate the plot
+    fig, ax = plt.subplots(1)
+
+    # Plot the mean line
+    ax.plot(mean_by_trial)
+
+    # Plot the STD "bars"
+    upper_lim = mean_by_trial + std_by_trial
+    lower_lim = mean_by_trial - std_by_trial
+    ax.fill_between(np.arange(mean_by_trial.shape[0]), upper_lim, lower_lim, alpha=0.2)
+
+    # Add axis labels
+    plt.xlabel('Trial')
+    plt.ylabel('Loss')
+
+    # OPTIONAL: Save the plot somewhere
+    plt.savefig('loss_across_trials.png')
+
+    # Display the plot
+    plt.show()
+
+If Optuna is functioning correctly, the resulting plot should look something like this (decreasing overall, with periodic spikes when the TPE sampler starts "exploring" new regions):
+
+.. image:: ../figures/walkthrough/loss_across_trials.png
+
+Checking for Overfitting
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Another common bug-bear of machine learning analyses is overfitting, which occurs when the model starts fitting to noise in the data its trained on, at the expense of its performance when applied to a testing dataset (which, in all likelihood, will not have the same pattern of noise). We can check for this as long as we have a metric evaluated at both validation and testing time.
+
+Thankfully, we have one such metric in our analysis; the balanced accuracy! Lets plot these two across trials to see how they compare. This can be done nearly identically to the prior analysis, but modified to sample two different values from the trial grouping instead:
+
+.. code-block:: python
+
+    trial_grouped = tutorial_df.sort_values('trial', ascending=True).groupby('trial')
+
+    test_mean_by_trial = trial_grouped['balanced_accuracy (test)'].mean()
+    test_std_by_trial = trial_grouped['balanced_accuracy (test)'].std()
+    valid_mean_by_trial = trial_grouped['balanced_accuracy (validate)'].mean()
+    valid_std_by_trial = trial_grouped['balanced_accuracy (validate)'].std()
+
+We also need to modify the plotting a bit to account for the dual datasets:
+
+.. code-block:: python
+
+    from matplotlib import pyplot as plt
+
+    # Initiate the plot
+    fig, ax = plt.subplots(1)
+
+    # Plot test first
+    y = test_mean_by_trial
+    y_std = test_std_by_trial
+    c = "C0"
+    ax.plot(y, color=c, label='Testing')
+    upper_lim = y + y_std
+    lower_lim = y - y_std
+    ax.fill_between(np.arange(y.shape[0]), upper_lim, lower_lim, alpha=0.2, color=c)
+
+    # Plot validation second
+    y = valid_mean_by_trial
+    y_std = valid_std_by_trial
+    c = "C1"
+    ax.plot(y, color=c, label='Validate')
+    upper_lim = y + y_std
+    lower_lim = y - y_std
+    ax.fill_between(np.arange(y.shape[0]), upper_lim, lower_lim, alpha=0.2, color=c)
+
+    # Add axis labels
+    plt.xlabel('Trial')
+    plt.ylabel('Balanced Accuracy')
+
+    # Add a legend
+    plt.legend()
+
+    # OPTIONAL: Save the plot somewhere
+    plt.savefig('validate_test_comparison.png')
+
+    # Display the plot
+    plt.show()
+
+This should result in a plot which looks something like this:
+
+.. image:: ../figures/walkthrough/validate_test_comparison.png
+
+

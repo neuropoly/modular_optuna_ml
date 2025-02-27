@@ -72,8 +72,8 @@ Likewise, all other pandas dataframe work as expected, allowing for sorting and 
 
     best_models_per_replicate = tutorial_df.sort_values('loss', ascending=False).groupby('replicate').tail(1)
 
-Common Analyses
----------------
+Common Plots
+------------
 
 .. attention::
 
@@ -254,3 +254,44 @@ Now we just plot their results over top of one another, like so:
 Voila! We now have a plot to compare the two to one another:
 
 .. image:: ../figures/walkthrough/model_comparison_test.png
+
+Common Statistics
+-----------------
+
+.. note::
+    The performance results of MOOP are **NOT** guaranteed to be normally distributed! As such, you should either test for normality before using parametric statistics, or use non-parametric analyses to minimize the number of assumptions you're making (or ignoring) of the data.
+
+Significant Differences in Runs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+While plots are well and good, we usually want to confirm that what they're showing is significant enough (statistically) to base future analyses on their conclusions. With the results of MOOP (and some help from SciPy), this can be done quite easily. Lets compare the Log. Reg. and SVM based analyses we used prior to see if their performance is significantly different, using replicates as "samples" to make the comparison more robust.
+
+The first step to doing so is to select the "best" model from each replicate for each analyses. We recommend selecting this based on the objective function, or a performance metric sampled at validation rather than test time. In our case, we'll use balanced accuracy (validate) for this, with the objective being used to break any ties:
+
+.. code-block:: python
+
+    best_reps_logreg = to_plot.sort_values(['balanced_accuracy (validate)', 'objective'], ascending=[True, False]).groupby('replicate').tail(1)
+    best_reps_svm = to_plot_svm.sort_values(['balanced_accuracy (validate)', 'objective'], ascending=[True, False]).groupby('replicate').tail(1)
+
+We can now compare the performance at testing however we like; we'll use Wilcoxon ranked-sum test (provided via SciPy for convenience) to test whether they differ substantially:
+
+.. code-block:: python
+
+    from scipy.stats import ranksums
+
+    # Isolate the testing performance from our best reps
+    x1 = best_reps_logreg['balanced_accuracy (validate)']
+    x2 = best_reps_svm['balanced_accuracy (validate)']
+
+    # Calculate the p-value (alpha) via ranked-sums analysis, testing whether
+    #  x1 > x2 performance wise
+    p = ranksums(x1, x2).pvalue
+
+    # Print the result
+    print(f"P-value that Log. Reg. != SVM in best performance: {p: .4f}")
+
+.. code-block::
+
+    > P-value that Log. Reg. != SVM in best performance:  0.0002
+
+adfasdf

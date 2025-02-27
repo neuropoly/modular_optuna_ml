@@ -99,7 +99,11 @@ We then take the mean and standard deviation of our desired metric ('loss' in th
     mean_by_trial = trial_grouped['objective'].mean()
     std_by_trial = trial_grouped['objective'].std()
 
-These can now be plotted, using the `std` as an "error" around the average performance:
+.. attention::
+
+    If a MOOP analyses is interrupted mid-database write, the contents of the dataframe can become parsed as objects, rather than the numeric types you would expect them to be. This will cause an error when trying to run ``mean`` or ``std``; if you run into this, you can utilize Pandas ``astype`` function to correct the columns in question. For now, see `here <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.astype.html>` for details on that process; use this until automated results interpretation through MOOPs has been added.
+
+These can now be plotted, using the ``std`` as an "error" around the average performance:
 
 .. code-block:: python
 

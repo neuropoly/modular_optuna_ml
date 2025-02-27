@@ -186,8 +186,67 @@ We also need to modify the plotting a bit to account for the dual datasets:
     # Display the plot
     plt.show()
 
-This should result in a plot which looks something like this:
+You should get a plot which looks something like this:
 
 .. image:: ../figures/walkthrough/validate_test_comparison.png
 
+Comparing Studies
+^^^^^^^^^^^^^^^^^
 
+Another common line of inquiry is to compare two (or more) studies to one another, seeing how their performance differs. For example, lets say we had a second study under the label `tutorial_study__tutorial_svm__walkthrough_data`, which differs in the machine learning model using (a Support Vector Machine instead of a Logistic Regression model). Lets load it from the database and prepare it for plotting, just as before:
+
+.. code-block:: python
+
+    tutorial_svm_df = pd.read_sql(
+        f"SELECT * FROM 'tutorial_study__tutorial_svm__walkthrough_data'",
+        con=con
+    )
+
+    trial_grouped_svm = tutorial_svm_df.sort_values('trial', ascending=True).groupby('trial')
+
+    test_mean_by_trial_svm = trial_grouped['balanced_accuracy (test)'].mean()
+    test_std_by_trial_svm = trial_grouped['balanced_accuracy (test)'].std()
+
+Now we just plot their results over top of one another, like so:
+
+.. code-block:: python
+
+    from matplotlib import pyplot as plt
+
+    # Initiate the plot
+    fig, ax = plt.subplots(1)
+
+    # Plot the Log. Reg. first
+    y = test_mean_by_trial
+    y_std = test_std_by_trial
+    c = "C0"
+    ax.plot(y, color=c, label='Log. Reg')
+    upper_lim = y + y_std
+    lower_lim = y - y_std
+    ax.fill_between(np.arange(y.shape[0]), upper_lim, lower_lim, alpha=0.2, color=c)
+
+    # Plot the SVM second
+    y = test_mean_by_trial_svm
+    y_std = test_std_by_trial_svm
+    c = "C0"
+    ax.plot(y, color=c, label='SVM')
+    upper_lim = y + y_std
+    lower_lim = y - y_std
+    ax.fill_between(np.arange(y.shape[0]), upper_lim, lower_lim, alpha=0.2, color=c)
+
+    # Add axis labels
+    plt.xlabel('Trial')
+    plt.ylabel('Balanced Accuracy (Test)')
+
+    # Add a legend
+    plt.legend()
+
+    # OPTIONAL: Save the plot somewhere
+    plt.savefig('model_comparison_test.png')
+
+    # Display the plot
+    plt.show()
+
+Voila! We now have a plot to compare the two to one another:
+
+.. image:: ../figures/walkthrough/model_comparison_test.png

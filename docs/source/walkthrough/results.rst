@@ -284,7 +284,7 @@ We can now compare the performance at testing however we like; we'll use Wilcoxo
     x2 = best_reps_svm['balanced_accuracy (validate)']
 
     # Calculate the p-value (alpha) via ranked-sums analysis, testing whether
-    #  x1 > x2 performance wise
+    #  x1 != x2 performance wise
     p = ranksums(x1, x2).pvalue
 
     # Print the result

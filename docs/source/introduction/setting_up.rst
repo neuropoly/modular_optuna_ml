@@ -5,11 +5,13 @@ Installation
 ------------
 
 1. Clone this repository to wherever you need it:
+
 .. code-block::
 
     git clone https://github.com/NeuroPoly/modular_optuna_ml.git
 
 2. Create a new Conda/Mamba environment with the dependencies needed:
+
 .. code-block::
 
     conda env create -f environment.yml
@@ -19,6 +21,7 @@ Installation
     mamba env create -f environment.yml
 
 3. Activate said environment
+
 .. code-block::
 
     conda activate modular_optuna_ml

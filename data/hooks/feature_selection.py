@@ -98,7 +98,7 @@ class NullityDrop(DataHook, ABC):
 class SampleNullityDrop(NullityDrop):
     """
     Data hook which will automatically remove samples in the dataset which contain more than some threshold amount of
-        null values. For example, with a threshold of 0.5, any samples which are missing more than half of their
+        NA values. For example, with a threshold of 0.5, any samples which are missing more than half of their
         features are dropped from the dataset.
 
     Example usage:

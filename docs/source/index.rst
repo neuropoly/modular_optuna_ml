@@ -41,8 +41,8 @@ While MOOP strives to provide native support for most common operations (providi
 Please see **TODO** for details on how to add this kind of custom functionality!
 
 
-Getting Started
-===============
+Index
+=====
 .. toctree::
    :maxdepth: 2
 

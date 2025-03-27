@@ -23,7 +23,7 @@ it can be easily extended to allow for the analysis of any tabular dataset.
 
 Four files are needed to run an analysis
 
-* A tabular dataset, containing the metrics you want to run the analysis on
+* A tabular dataset (usually a `.tsv` file), containing the metrics you want to run the analysis on
   * Should contain at least 1 independent and 1 target metric; unsupervised analyses are currently not supported
 * A data configuration file; this defines where a dataset is and what pre-processing methods
 should be applied to its contents. An example, alongside the dataset it manages, can be found in `testing/iris_data/`

@@ -24,7 +24,7 @@ class SimpleImputation(FittedDataHook):
     {
       "type": "imputation_simple",
       "features": ["color", "species"],
-      "strategy": "most_common"
+      "strategy": "most_frequent"
     }
     """
     def __init__(self, config: dict, **kwargs):

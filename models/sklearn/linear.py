@@ -11,7 +11,43 @@ from tuning.utils import TunableParam
 
 class LogisticRegressionManager(SciKitLearnModelManager[LogisticRegression]):
     """
-    Optuna model manager for the LogisticRegression class in SciKit-Learn
+    Optuna model manager for the LogisticRegression class in SciKit-Learn.
+
+    NOTE: Due to the need to avoid chaining tunable parameters (as configuring such a use case would be infeasible),
+        this implementation is a more involved on than most SciKit-Learn models. This is most apparent in the case where
+        both L1 and L2 regularization are used (an 'elasticnet' regression). In this case, L1 and L2 are still both
+        tuned by Optuna, but rather than being fed to the model directly (which would result in crash) are instead used
+        to construct the parameters which are actually required by SciKit-Learn's ElasticNet implementation (being the
+        scaler 'C' and ratio of l1 and l2 'l1_ratio'). Mathematically, these are equivalent, but should be noted if you
+        wish to utilize the hyperparameters of the "best" model identified by this tool within SciKit-Learn!
+
+    Example Usage:
+    {
+        "label": "LogisticRegression",
+        "model": "LogisticRegression",
+        "parameters": {
+            "penalty": {
+                  "label": "penalty",
+                  "type": "categorical",
+                  "choices": ["l1", "l2", "elasticnet", null]
+            },
+            "solver": "saga",
+            "l1_c": {
+                  "label": "l1",
+                  "type": "float",
+                  "log": true,
+                  "low": 1e-3,
+                  "high": 1e3
+            },
+            "l2_c": {
+                  "label": "l2",
+                  "type": "float",
+                  "log": true,
+                  "low": 1e-3,
+                  "high": 1e3
+            }
+        }
+    }
     """
     def tune(self, trial: Trial):
         def tune_and_get(key: str):

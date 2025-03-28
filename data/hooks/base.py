@@ -10,8 +10,18 @@ class DataHook(ABC):
     """
     Basic implementation for functions which can be called as data hooks.
 
-    These should be configured during program init (to allow for fail-faster checking),
-    after which they will be run at the user-specified points within the dataset
+    Data hook use is split into two stages: initialization and application.
+
+    During initialization, any configuration settings the user provided are parsed and used to initialize the data hook
+        instance. This is done before any ML analyses are run (to follow the fail-faster paradigm), and is where you
+        should parse any configuration options and check their validity. Anything that needs to be run once at the
+        beginning, before the data hook is applied to any data, should be done here as well. This code is usually placed
+        into the `from_config` function.
+
+    During application, the hook is applied to the data provided to it (in `BaseDataManager` form). At minimum, the
+        data hook will receive a data manager `x` containing feature/regressor values `x`. If the analysis is a
+        supervised one, can also receive a data manager containing the target values `y` as well. See `run` for further
+        details.
     """
     def __init__(self, config: dict, logger: Logger = Logger.root):
         # Basic init implementation which tracks attributes shared with all data hooks
@@ -40,18 +50,27 @@ class DataHook(ABC):
     @abstractmethod
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
         """
-        Run this hook's process on a given DataManager in its entirely.
+        Run this hook's process on a given DataManager in its entirety.
+
+        To avoid potentially propagating data modifications across replicates and/or cross-validation splits, this
+            function should return a modified copy of the original input data, rather than modifying the input
+            DataManager(s) directly!
+
         :param x: The data to process
         :param y: The target metric to use, if the data hook needs it.
-        :return: The data manager, post-processing. For safety, it should generally be its own (copied) instance
+        :return: A copy of the original data manager `x`, with this data hook applied to it.
         """
         ...
 
 
 class FittedDataHook(DataHook, ABC):
     """
-    Data hook which "fits" itself to a set of training data, and uses that fit to
-    inform how it will be applied to other datasets
+    An extended data hook which allows for the hook to be "fit" to a training dataset, then applied to said training
+        dataset AND another testing dataset. This should be used for data hooks which manage data transformations which,
+        if they were applied to the entire dataset indiscriminately, would result in data leakage.
+
+    Like `run` before it, this function should return modified copies of its input data, rather than modifying the input
+        DataManager(s) directly!
     """
     @abstractmethod
     def run_fitted(self,
@@ -62,11 +81,12 @@ class FittedDataHook(DataHook, ABC):
         ) -> (BaseDataManager, BaseDataManager):
         """
         Run this hook's process on a pair of DataManagers, fitting on the training input applying to both
-        :param x_train: The data which should be used to "fit" the hook to, before it is applied to both
-        :param x_test: A dataset which will have the hook applied to it, but not fit to it.
-        :param y_train: The target metric to use during fitting, if the data hook needs it.
-        :param y_test: The target metric to use during application to testing, if the data hook needs it.
+
+        :param x_train: A dataset which will be used to "train" the hook. Post-training, the hook is applied to it as well
+        :param x_test: A dataset which will have the hook applied to it only, but will not affect how the hook is "trained".
+        :param y_train: The target metric associated with `x_train` for each of its samples, should the analyses be a supervised one.
+        :param y_test: The target metric associated with `x_test` for each of its samples, should the analyses be a supervised one.
             NOTE: 'y_test' is here solely for standardization, and should probably never be used to avoid overfitting!
-        :return: The modified versions of x_train and x_test, after the fit has been applied to them
+        :return: The modified copies of x_train and x_test, after the fit has been applied to them.
         """
         ...

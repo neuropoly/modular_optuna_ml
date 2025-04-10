@@ -14,6 +14,7 @@ Author: Jan Valosek, Kalum Ost
 
 import os
 import re
+import argparse
 
 import numpy as np
 import pandas as pd
@@ -40,14 +41,45 @@ target_to_title_dict = {
     'AIS_change_bin_gt0': 'AIS Change'
 }
 
+def get_parser():
+    """
+    parser function
+    """
 
-def read_db(target):
+    parser = argparse.ArgumentParser(
+        description='Script for inspecting and analyzing the output database.',
+        prog=os.path.basename(__file__).strip('.py')
+    )
+    parser.add_argument(
+        '-i',
+        metavar="FILE_NAME",
+        required=True,
+        type=str,
+        help='Absolute path to the SQLite database. '
+             'Example: <PATH>/target_AIS_change_bin_1.db'
+    )
+    parser.add_argument(
+        '-o',
+        metavar='DIR_NAME',
+        required=True,
+        type=str,
+        help='Absolute path to the output directory where the results (figures and CSV files) will be saved. '
+    )
+
+    return parser
+
+
+def read_db(fname_path: str) -> dict:
     """
     Read tables from the database as dataframes
-    :param target: target variable
+    :param fname_path: path to the SQLite database
     :return: dictionary with the tables (dataframes) from the database
     """
-    con = connect(f'testing/output/output_{target}_{num_of_trials}_trials.db')
+    assert os.path.exists(fname_path), f"Database file not found: {fname_path}"
+    con = connect(fname_path)
+
+    print('Reading tables...')
+
     tables = pd.read_sql(
         "SELECT * FROM sqlite_master",
         con=con
@@ -398,8 +430,17 @@ def plot_mean_std_roc_curve(best_models_dict, metric):
 
 
 def main():
+
+    # Parse the command line arguments
+    parser = get_parser()
+    args = parser.parse_args()
+
+    fname_path = os.path.abspath(args.i)
+    output_path = os.path.abspath(args.o)
+    os.makedirs(output_path, exist_ok=True)
+
     # Read tables from the database as dataframes
-    tables_dict = read_db(target)
+    tables_dict = read_db(fname_path)
 
     #for metric in ['balanced_accuracy (test)', 'balanced_accuracy (validate)']:
     for metric in ['balanced_accuracy (test)']:

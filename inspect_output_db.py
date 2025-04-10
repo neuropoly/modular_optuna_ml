@@ -233,11 +233,13 @@ def get_df_for_plotting(tables_dict, metric) -> pd.DataFrame:
 
     # Loop over individual models
     for model_name, df in tables_dict.items():
-        df_temp = df[['replicate', 'trial', metric]]
-        # Rename balanced_accuracy to model_name
-        df_temp = df_temp.rename(columns={metric: model_name})
-        # Add df_temp to df_plotting based on 'replicate' and 'trial'; do not replicate the 'replicate' and 'trial' columns
-        df_plotting = pd.merge(df_plotting, df_temp, on=['replicate', 'trial'], how='outer')
+        if target in model_name:
+            # Get only the columns we need for plotting
+            df_temp = df[['replicate', 'trial', metric]]
+            # Rename balanced_accuracy to model_name
+            df_temp = df_temp.rename(columns={metric: model_name})
+            # Add df_temp to df_plotting based on 'replicate' and 'trial'; do not replicate the 'replicate' and 'trial' columns
+            df_plotting = pd.merge(df_plotting, df_temp, on=['replicate', 'trial'], how='outer')
 
     # Some additional cleaning for plotting
     # Sort by 'replicate' and 'trial'
@@ -442,23 +444,26 @@ def main():
     # Read tables from the database as dataframes
     tables_dict = read_db(fname_path)
 
-    #for metric in ['balanced_accuracy (test)', 'balanced_accuracy (validate)']:
-    for metric in ['balanced_accuracy (test)']:
-        # Get the best replicate (i.e., best performing model) for each trial (train/test split)
-        best_models_dict = get_best_replicate(tables_dict, metric)
+    # Get unique targets
+    targets = set([item.split('__')[0] for item in tables_dict.keys()])
 
-        plot_mean_std_roc_curve(best_models_dict, metric)
+    for target in targets:
+        #for metric in ['balanced_accuracy (test)', 'balanced_accuracy (validate)']:
+        for metric in ['balanced_accuracy (validate)']:
+            # Get the best replicate (i.e., best performing model) for each trial (train/test split)
+            best_models_dict = get_best_replicate(tables_dict, metric)
+            plot_mean_std_roc_curve(best_models_dict, metric)
 
-        models_roc_data = extract_roc_data(best_models_dict)
-        if models_roc_data:
-            plot_roc_curve(models_roc_data, metric)
-        else:
-            print("Skipping ROC curve generation: No valid data found.")
+            models_roc_data = extract_roc_data(best_models_dict)
+            if models_roc_data:
+                plot_roc_curve(models_roc_data, metric)
+            else:
+                print("Skipping ROC curve generation: No valid data found.")
 
-        # Prepare the dataframe for plotting
-        df_plotting = get_df_for_plotting(tables_dict, metric)
-        # Plot the metric across trials for each model
-        plotting(df_plotting, metric)
+            # Prepare the dataframe for plotting
+            df_plotting = get_df_for_plotting(tables_dict, metric, target)
+            # Plot the metric across trials for each model
+            plotting(df_plotting, metric, target, output_path)
 
 if __name__ == '__main__':
     main()

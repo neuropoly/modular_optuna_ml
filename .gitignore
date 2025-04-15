@@ -3,3 +3,12 @@
 /testing/output/output.db
 /testing/private/*
 /.idea/*
+*__pycache__/
+.vscode/
+.DS_Store
+
+# Environments
+.env
+.venv
+env/
+venv/

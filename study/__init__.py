@@ -18,5 +18,7 @@ METRIC_FUNCTIONS: dict[str, MetricUpdater] = {
     "sk_f1_perclass": sk_f1_perclass,
     "importance_by_permutation": importance_by_permutation,
     "correct_samples": correct_samples,
-    "incorrect_samples": incorrect_samples
+    "incorrect_samples": incorrect_samples,
+    "y_true_collector": y_true_collector,
+    "y_pred_proba_collector": y_pred_proba_collector
 }

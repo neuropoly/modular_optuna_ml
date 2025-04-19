@@ -19,7 +19,8 @@ def clean_val_for_db(val):
 def sk_log_loss(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
     # Log Loss
     py = manager.predict_proba(x.as_array())
-    return log_loss(y.as_array(), py)
+    y_labels = [i for i in range(py.shape[1])]
+    return log_loss(y.as_array(), py, labels=y_labels)
 
 def sk_balanced_accuracy(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
     # Balanced Accuracy
@@ -142,3 +143,15 @@ def incorrect_samples(manager: OptunaModelManager, x: BaseDataManager, y: BaseDa
     bad_samples = clean_val_for_db(bad_samples)
 
     return bad_samples
+
+""" ROC Curve """
+def y_true_collector(_: OptunaModelManager, __: BaseDataManager, y: BaseDataManager):
+    """ Collects the true binary labels for ROC curve generation. """
+    return clean_val_for_db(list(y.as_array().flatten()))
+
+def y_pred_proba_collector(manager: OptunaModelManager, x: BaseDataManager, _: BaseDataManager):
+    """ Collects predicted probabilities for the positive class. """
+    py = manager.predict_proba(x.as_array())
+    if py.shape[1] != 2:
+        raise ValueError(f"Expected binary classification with two probability columns; found {py.shape[1]}.")
+    return clean_val_for_db(list(py[:, 1]))  # Probabilities for the positive class

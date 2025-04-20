@@ -43,6 +43,14 @@ class OptunaModelManager(Tunable, Generic[T], ABC):
         ...
 
     def evaluate_param(self, key: str):
+        """
+        Evaluates a given parameter explicitly, usually right before the model is instantiated and about to be trained.
+
+        This function mainly exists to provide a way for use to define parameters which should be tuned by Optuna,
+            and request they be tuned at specific points of the run-time.
+
+        :param key: The key of the parameter we want to evaluate.
+        """
         param = self.params[key]
         if isinstance(param, TunableParam):
             return param.value

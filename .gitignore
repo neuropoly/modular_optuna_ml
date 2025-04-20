@@ -4,3 +4,12 @@
 /testing/private/*
 /.idea/*
 /docs/build/
+*__pycache__/
+.vscode/
+.DS_Store
+
+# Environments
+.env
+.venv
+env/
+venv/

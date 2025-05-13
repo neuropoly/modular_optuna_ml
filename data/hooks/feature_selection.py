@@ -51,7 +51,7 @@ class ExplicitDrop(ExplicitFeatures):
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
         # We can only drop features in a dataset if they have more than 1
         if x.n_features() == 1:
-            raise TypeError(f"DataManager of type '{self.__class__}' only has one feature! Cannot modify feature set.")
+            raise TypeError(f"DataManager of type '{self.__class__}' only has one feature! Refused to make an empty dataset.")
         return x.drop_features(self.features)
 
 @registered_data_hook("keep_features_explicit")
@@ -68,7 +68,7 @@ class ExplicitKeep(ExplicitFeatures):
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
         # We can only drop features in a dataset if they have more than 1
         if x.n_features() == 1:
-            raise TypeError(f"DataManager of type '{self.__class__}' only has one feature! Cannot modify feature set.")
+            raise TypeError(f"DataManager of type '{self.__class__}' only has one feature! Refused to make an empty dataset.")
         return x.get_features(self.features)
 
 
@@ -124,14 +124,14 @@ class FeatureNullityDrop(NullityDrop):
     }
     """
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
-        # Make sure this DataManager has more than one feature!
-        if x.n_features() == 1:
-            raise TypeError(f"DataManager of type '{self.__class__.__name__}' only has one feature which cannot be dropped!")
         # Otherwise, calculate the null content for each feature dropping any which surpass the configured threshold
         n_samples = len(x)
         null_tolerance = int(n_samples * self.threshold)
         drop_idx = [k for k in x.features()
                     if np.sum(pd.isnull(x.get_features(k).as_array())) > null_tolerance]
+        if len(drop_idx) == x.n_features():
+            raise IndexError(f"Data Hook of class `feature_drop_null` tried to drop all remaining features in a dataset! "
+                             f"Consider reducing the threshold somewhat, or doing imputation instead.")
         return x.drop_features(drop_idx)
 
 

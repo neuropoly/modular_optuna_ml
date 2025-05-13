@@ -225,7 +225,7 @@ class StudyManager(object):
         # Isolate the target column(s) from the dataset
         if self.study_config.target is not None:
             if data_manager.n_features() == 1:
-                raise TypeError("Failed to isolated target feature; provided dataset only has 1 feature to choose!")
+                raise TypeError("Failed to isolated target feature; provided dataset only has 1 feature available!")
             x = data_manager.get_features([c for c in data_manager.features() if c != self.study_config.target])
             y = data_manager.get_features(self.study_config.target)
         else:

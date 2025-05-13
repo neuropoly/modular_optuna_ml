@@ -1,0 +1,18 @@
+{
+  "label": "model_label",
+  "model": "ModelType",
+  "parameters": {
+    "non_tuned_param": "value",
+    "tuned_float_param": {
+      "label": "float_param_label",
+      "type": "float",
+      "low": 1.0,
+      "high": 2.0
+    },
+    "tuned_choice_param": {
+      "label": "cat_label",
+      "type": "category",
+      "choices": ["A", "B", 3]
+    }
+  }
+}

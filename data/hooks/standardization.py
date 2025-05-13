@@ -13,6 +13,24 @@ from data.mixins import MultiFeatureMixin
 
 @registered_data_hook("standard_scaling")
 class StandardScaling(FittedDataHook):
+    """
+    Standardizes each feature in the provided dataset to follow a unit norm (that is, have mean of 0 and a standard
+        deviation of 1).
+
+    Utilizes SciKit-Learn's StandardScaler implementation. As such, aside from the addition of a "features" argument
+        to allow the user to specify a set of feature they want the scaling applied to, its implementation and
+        use here is identical.
+
+    If no features list is explicitly defined by the user (via the "features" argument), this hook will be applied to
+        all features in the dataset it was provided.
+
+    Example usage:
+    {
+      "type": "standard_scaling",
+      "features": ["age", "height", "weight"],
+      "with_mean": false
+    }
+    """
     def __init__(self, config: dict, **kwargs):
         super().__init__(config, **kwargs)
 

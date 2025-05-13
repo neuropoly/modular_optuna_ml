@@ -3,6 +3,7 @@
 /testing/output/output.db
 /testing/private/*
 /.idea/*
+/docs/build/
 *__pycache__/
 .vscode/
 .DS_Store

@@ -1,0 +1,22 @@
+{
+  "label": "StudyLabel",
+  "random_seed": 12345,
+  "no_replicates": 10,
+  "no_crosses": 10,
+  "no_trials": 10,
+  "target": "metric_label",
+  "objective": "metric_function",
+  "metrics": {
+    "train": [
+      "metric_function"
+    ],
+    "validate": [
+      "metric_function"
+    ],
+    "test": [
+      "metric_function"
+    ]
+  },
+  "track_params": true,
+  "output_path": "path/to/output.db"
+}

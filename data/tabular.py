@@ -10,12 +10,11 @@ from config.utils import as_str, default_as, is_file, is_list, parse_data_config
 from data.base import BaseDataManager, registered_datamanager
 from data.hooks import DATA_HOOKS
 from data.hooks.base import DataHook, FittedDataHook
-from data.mixins import MultiFeatureMixin
 from tuning.utils import Tunable
 
 
 @registered_datamanager("tabular")
-class TabularDataManager(BaseDataManager, MultiFeatureMixin):
+class TabularDataManager(BaseDataManager):
     """
     Data manager for data stored in tabular data formats (i.e. 'csv')
 

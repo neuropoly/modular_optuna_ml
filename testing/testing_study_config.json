@@ -20,7 +20,8 @@
       "sk_recall_perclass",
       "sk_f1_perclass",
       "correct_samples",
-      "incorrect_samples"
+      "incorrect_samples",
+      "importance_by_permutation"
     ]
   },
   "track_params": true,

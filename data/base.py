@@ -4,6 +4,7 @@ from logging import Logger
 from typing import Iterable, Self, Sequence, Type
 
 import numpy as np
+import pandas as pd
 from optuna import Trial
 
 from tuning.utils import Tunable, TunableParam
@@ -22,6 +23,14 @@ class BaseDataManager(Sequence, Tunable, ABC):
 
         # Keep tabs on the list of tunable parameters
         self.tunable_hooks: list[Tunable] = []
+
+    @property
+    @abstractmethod
+    def data(self) -> pd.DataFrame:
+        """
+        A pandas dataframe which will mediate the samples and their features for us
+        """
+        ...
 
     def tune(self, trial: Trial):
         for h in self.tunable_hooks:

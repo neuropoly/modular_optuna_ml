@@ -17,7 +17,7 @@
   "post_split_hooks": [
     {
       "type": "one_hot_encode",
-      "features": ["color"]
+      "features": ["color", "flower_category"]
     },
     {
       "type": "ladder_encode",

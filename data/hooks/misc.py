@@ -8,7 +8,6 @@ from config.utils import default_as, parse_data_config_entry
 from data import BaseDataManager
 from data.hooks import registered_data_hook
 from data.hooks.base import DataHook
-from data.mixins import MultiFeatureMixin
 
 
 @registered_data_hook("dump")
@@ -52,15 +51,14 @@ class DumpHook(DataHook):
             x: BaseDataManager,
             y: Optional[BaseDataManager] = None
         ) -> BaseDataManager:
-        # We can only dump tabular datasets currently
-        if isinstance(x, MultiFeatureMixin):
-            df_out = shallow_copy(x.data)
-            df_out[y.data.columns[0]] = y.data.iloc[:, 0]
-            # Save the dataframe, depending on the output type
-            if self.output_type == 'tsv':
-                df_out.to_csv(self.output_dest, sep='\t')
-            elif self.output_type == 'csv':
-                df_out.to_csv(self.output_dest, sep=',')
+        # Dump the results to a tabular output
+        df_out = shallow_copy(x.data)
+        df_out[y.data.columns[0]] = y.data.iloc[:, 0]
+        # Save the dataframe, depending on the output type
+        if self.output_type == 'tsv':
+            df_out.to_csv(self.output_dest, sep='\t')
+        elif self.output_type == 'csv':
+            df_out.to_csv(self.output_dest, sep=',')
 
         # Return the result, unchanged
         return x

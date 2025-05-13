@@ -6,7 +6,6 @@ from sklearn.inspection import permutation_importance
 from sklearn.metrics import balanced_accuracy_score, log_loss, roc_auc_score, precision_score, recall_score, f1_score
 
 from data import BaseDataManager
-from data.mixins import MultiFeatureMixin
 from models.base import OptunaModelManager
 
 
@@ -88,13 +87,6 @@ def sk_f1_perclass(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataM
 
 """ Feature Importance """
 def importance_by_permutation(manager: OptunaModelManager, x: BaseDataManager, y: BaseDataManager):
-    # Sanity check that the user is requesting this on a data manager with multiple features
-    if not issubclass(type(x), MultiFeatureMixin):
-        # TODO: Move this check to pre-run, so it will fail before any (potentially slow) analyses are run
-        raise TypeError(
-            f"DataManager of type '{type(x).__name__}' only has one feature, feature importance is irrelevant"
-        )
-    x: BaseDataManager | MultiFeatureMixin
     # Get the mean importance values
     importance_vals = permutation_importance(manager.get_model(), x.as_array(), y.as_array()).importances_mean
     # Pair them with their feature labels

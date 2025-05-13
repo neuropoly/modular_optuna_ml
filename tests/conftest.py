@@ -1,10 +1,54 @@
 import json
 import tempfile
 from pathlib import Path
+from typing import Self
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from config.data import DataConfig
+from data.base import BaseDataManager
+
+
+class DummyDataManager(BaseDataManager):
+
+    def __init__(self, new_data: pd.DataFrame, **kwargs):
+        # Initiate superclass stuff
+        super().__init__(**kwargs)
+
+        # Set the DataFrame managed by this object to be the dataframe provided
+        self._data = new_data
+
+    @property
+    def data(self) -> pd.DataFrame:
+        return self._data
+
+    def _replace_data(self, new_df: pd.DataFrame):
+        self._data = new_df
+
+    def shallow_copy(self) -> Self:
+        return DummyDataManager(self._data)
+
+    @classmethod
+    def from_config(cls, config: dict) -> Self:
+        raise NotImplementedError(
+            f"This is a dummy data manager meant for automated testing; it cannot be built from a config file."
+        )
+
+    def pre_split(self, is_cross: bool, targets: Self = None) -> Self:
+        raise NotImplementedError(
+            f"This is a dummy data manager meant for automated testing; it should not be split."
+        )
+
+    def split(self, train_idx: np.ndarray, test_idx: np.ndarray, train_target: Self, test_target: Self,
+              is_cross: bool = True) -> (Self, Self):
+        raise NotImplementedError(
+            f"This is a dummy data manager meant for automated testing; it should not be split."
+        )
+
+    def __len__(self):
+        return self._data.shape[0]
 
 
 @pytest.fixture

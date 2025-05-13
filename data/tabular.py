@@ -51,6 +51,10 @@ class TabularDataManager(BaseDataManager):
         # Return the result
         return self._data
 
+    def _replace_data(self, new_df: pd.DataFrame):
+        # Nothing fancy here, there's nothing tied to the contents of the dataframe for this class
+        self._data = new_df
+
     @classmethod
     def from_config(cls, config: dict, logger: Logger = Logger.root):
         # Initiate a new instance of this class
@@ -124,52 +128,6 @@ class TabularDataManager(BaseDataManager):
                 new_instance.tunable_hooks.append(h)
 
         return new_instance
-
-    def get_index(self) -> np.array:
-        return self.data.index.to_numpy()
-
-    def get_samples(self, idx) -> Self:
-        sub_df = self.data.iloc[idx, :]
-        if isinstance(sub_df, pd.Series):
-            # This BS is needed because Pandas auto-casts single index queries to Series
-            sub_df = pd.DataFrame(data=sub_df).T
-        new_instance = self.shallow_copy()
-        new_instance._data = sub_df
-        return new_instance
-
-    def get_features(self, idx) -> Self:
-        # Creates a new TabularDataManager with only the queried features
-        sub_df = self.data.loc[:, idx]
-        if isinstance(sub_df, pd.Series):
-            # This BS is needed because Pandas auto-casts single index queries to Series
-            sub_df = pd.DataFrame(data=sub_df)
-        new_instance = self.shallow_copy()
-        new_instance._data = sub_df
-        return new_instance
-
-    def set_features(self, idx, new_data) -> Self:
-        """Creates a new TabularDataManager with the modified features in place"""
-        new_df = self.data.copy()
-        new_df.loc[:, idx] = new_data
-        new_instance = self.shallow_copy()
-        new_instance._data = new_df
-        return new_instance
-
-    def drop_features(self, idx) -> Self:
-        new_df = self.data.copy()
-        new_df = new_df.drop(columns=idx)
-        new_instance = self.shallow_copy()
-        new_instance._data = new_df
-        return new_instance
-
-    def n_features(self) -> int:
-        return self.data.shape[1]
-
-    def features(self) -> Iterable[str]:
-        return self.data.columns
-
-    def as_array(self) -> np.ndarray:
-        return self.data.to_numpy()
 
     def pre_split(self, is_cross: bool, target: Self = None) -> Self:
         new_instance = self

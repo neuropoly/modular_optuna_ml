@@ -34,7 +34,7 @@ def categorical_data_manager():
 
 
 """
-One Hot Encoder
+=== OneHotEncoding ===
 """
 
 ### COMMON APPLICATIONS ###
@@ -197,31 +197,55 @@ def test_one_hot_encoding__unknown_in_test__handle_unknown_warning(categorical_d
     with pytest.warns(UserWarning):
         ohe.run_fitted(categorical_data_manager, bad_data_manager)
 
-def test_ordinal_encoding(iris_data_config):
-    """
-    Tests OrdinalEncoding on the 'color' column.
-    """
 
-    ordinal_encoding = {'white': 0, 'purple': 1, 'pink': 2}
+"""
+=== OrdinalEncoding ===
+"""
 
+@pytest.mark.parametrize("feature_cols,cat_order", [
+    (["binary_categorical"], ['male', 'female']),
+    (["trinary_categorical"], ['red', 'green', 'blue']),
+    (["ordinal"], ['low', 'medium', 'high']),
+    # I hope no one actually does this, but it's here just in case...
+    (["oops_all_bob"], ['bob']),
+    (["binary_categorical", "trinary_categorical"], [['male', 'female'], ['red', 'green', 'blue']]),
+])
+def test_ordinal_encoding__default(feature_cols, cat_order, categorical_data_manager):
+    # Run the OrdinalEncoder hook
     hook_cls = DATA_HOOKS.get('ordinal_encode', None)
-    ordinal = hook_cls.from_config(config={'features': ['color'],
-                                           'categories': list(ordinal_encoding.keys()),
-                                           'unknown_value': np.nan,
-                                           'handle_unknown': 'use_encoded_value'})
-    encoded = ordinal.run(iris_data_config.data_manager)
+    ohe = hook_cls.from_config(config={
+        'features': feature_cols,
+        'categories': cat_order
+    })
+    result = ohe.run(categorical_data_manager)
 
-    input_data = iris_data_config.data_manager.data['color'].rename('color')
-    encoded_data = encoded.data['color'].rename('color_encoded')
-
-    # Combine input_data and encoded_data into a single DataFrame for easier comparison
-    combined = pd.concat([input_data, encoded_data], axis=1)
-    # Check that the encoding is correct
-    for row in combined.iterrows():
-        color = row[1]['color']
-        color_encoded = row[1]['color_encoded']
-        if color in ordinal_encoding:
-            assert color_encoded == ordinal_encoding[color]
+    for i, c in enumerate(feature_cols):
+        # Confirm that the column now only contains integers from 0 to n
+        value_set = set(result.data.loc[:, c])
+        if isinstance(cat_order[i], list):
+            cat_vals = cat_order[i]
         else:
-            assert pd.isna(color_encoded)
+            cat_vals = cat_order
 
+        # Generate a mapping of values to ordinal positions
+        ordinal_map = {v: i for i, v in enumerate(cat_vals)}
+        expected_set = {i for i in ordinal_map.values()}
+
+        # Confirm no unusual values were generated
+        delta_set = value_set - expected_set
+        if len(delta_set) > 0:
+            pytest.fail(
+                f"Ordinal Encoder created unknown values {delta_set} when only {expected_set} should have been present"
+            )
+
+        # Confirm that these features were mapped correctly
+        for v in cat_vals:
+            in_df = categorical_data_manager.data
+            v_df = in_df.loc[in_df[c] == v, c]
+            v_idx = v_df.index
+            v_int = ordinal_map[v]
+            bad_vals = set(result.data.loc[v_idx, c]) - {v_int}
+            if len(bad_vals) > 0:
+                pytest.fail(
+                    f"Values in column '{c}' had unknown values {bad_vals} after Ordinal Encoding."
+                )

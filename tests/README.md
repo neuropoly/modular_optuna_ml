@@ -15,3 +15,5 @@ This package uses PyTest to run its tests, but due to the way its structured the
     ```bash
     pytest
     ```
+
+If you are running PyTest through an IDE (such as PyCharm), you may also need to mark the `tests` directory as a testing directory to do in-place runs.

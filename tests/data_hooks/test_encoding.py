@@ -34,6 +34,10 @@ def categorical_data_manager():
     yield DummyDataManager(testing_df)
 
 
+"""
+One Hot Encoder
+"""
+
 @pytest.mark.parametrize("feature_cols,expected_newcols", [
     (["binary_categorical"], {'binary_categorical_male', 'binary_categorical_female'}),
     (["trinary_categorical"], {'trinary_categorical_red', 'trinary_categorical_blue', 'trinary_categorical_green'}),
@@ -46,7 +50,7 @@ def categorical_data_manager():
     (["oops_all_nan"], {'oops_all_nan_nan'}),
     (["binary_categorical", "trinary_categorical"], {'binary_categorical_male', 'binary_categorical_female', 'trinary_categorical_red', 'trinary_categorical_blue', 'trinary_categorical_green'}),
 ])
-def test_one_hot_encoding_default(feature_cols, expected_newcols, categorical_data_manager):
+def test_one_hot_encoding__default(feature_cols, expected_newcols, categorical_data_manager):
     # Identify the set of columns which should be left over post-run
     too_keep_cols = set(categorical_data_manager.features())
     too_keep_cols -= set(feature_cols)
@@ -77,33 +81,51 @@ def test_one_hot_encoding_default(feature_cols, expected_newcols, categorical_da
     if len(invlaid_cols) > 0:
         pytest.fail(f"Found features '{invlaid_cols}' which should not exist.")
 
-def test_one_hot_encoding_binary(iris_data_config):
-    """
-    Tests OneHotEncoding on the 'flower_category' column with two unique values ('small-flower', 'large-flower').
-    'drop' is set to 'if_binary' and 'handle_unknown' is set to 'warn'.
-    """
+@pytest.mark.parametrize("feature_cols,expected_newcols", [
+    (["binary_categorical"], {'binary_categorical_male'}),
+    (["trinary_categorical"], {'trinary_categorical_red', 'trinary_categorical_blue', 'trinary_categorical_green'}),
+    (["ordinal"], {'ordinal_low', 'ordinal_medium', 'ordinal_high'}),
+    (["binary_categorical_with_nan"], {'binary_categorical_with_nan_male', 'binary_categorical_with_nan_female', 'binary_categorical_with_nan_nan'}),
+    (["trinary_categorical_with_nan"], {'trinary_categorical_with_nan_red', 'trinary_categorical_with_nan_blue', 'trinary_categorical_with_nan_green', 'trinary_categorical_with_nan_nan'}),
+    (["ordinal_with_nan"], {'ordinal_with_nan_low', 'ordinal_with_nan_medium', 'ordinal_with_nan_high', 'ordinal_with_nan_nan'}),
+    (["oops_half_nans"], {'oops_half_nans_low', 'oops_half_nans_medium', 'oops_half_nans_high', 'oops_half_nans_nan'}),
+    (["oops_all_bob"], {'oops_all_bob_bob'}),
+    (["oops_all_nan"], {'oops_all_nan_nan'}),
+    (["binary_categorical", "trinary_categorical"], {'binary_categorical_male', 'trinary_categorical_red', 'trinary_categorical_blue', 'trinary_categorical_green'}),
+])
+def test_one_hot_encoding__if_binary(feature_cols, expected_newcols, categorical_data_manager):
+    # Identify the set of columns which should be left over post-run
+    too_keep_cols = set(categorical_data_manager.features())
+    too_keep_cols -= set(feature_cols)
+
+    # Run the OneHotEncoder hook
     hook_cls = DATA_HOOKS.get('one_hot_encode', None)
-    ohe = hook_cls.from_config(config={'features': ['flower_category'],
-                                       "drop": "if_binary",
-                                       "handle_unknown": "warn"})
-    encoded = ohe.run(iris_data_config.data_manager)
+    ohe = hook_cls.from_config(config={
+        'features': feature_cols,
+        'drop': "if_binary"
+    })
+    result = ohe.run(categorical_data_manager)
+    result_cols = set(result.features())
 
-    cols = list(encoded.data.columns)
-    assert "flower_category" not in cols  # 'flower_category' column should be removed after encoding
+    # Confirm all the new features we expected to appear did appear
+    missing_expected_cols = expected_newcols - result_cols
+    if len(missing_expected_cols) > 0:
+        pytest.fail(f"Expected new features '{expected_newcols}', missing '{missing_expected_cols}'")
 
-    input_data = iris_data_config.data_manager.data['flower_category'].rename('flower_category')
-    encoded_data = encoded.data['flower_category_small-flower'].rename('flower_category_small-flower')
+    # Confirm all the features we expected to remain are still there
+    missing_kept_cols = too_keep_cols - result_cols
+    if len(missing_kept_cols) > 0:
+        pytest.fail(f"Expected conserved features '{too_keep_cols}', missing '{missing_kept_cols}'")
 
-    # Combine input_data and encoded_data into a single DataFrame for easier comparison
-    combined = pd.concat([input_data, encoded_data], axis=1)
-    # Check that the encoding is correct
-    for row in combined.iterrows():
-        flower_category = row[1]['flower_category']
-        small_flower = row[1]['flower_category_small-flower']
-        if flower_category == 'small-flower':
-            assert small_flower == 1
-        else:
-            assert small_flower == 0
+    # Confirm that the original "encoded" features are no longer present
+    persistent_cols = set(feature_cols).intersection(result_cols)
+    if len(persistent_cols) > 0:
+        pytest.fail(f"Features '{feature_cols}' are supposed to be removed, yet '{persistent_cols}' remained")
+
+    # Report any columns which were found, but should not be
+    invlaid_cols = result_cols - (expected_newcols.union(too_keep_cols))
+    if len(invlaid_cols) > 0:
+        pytest.fail(f"Found features '{invlaid_cols}' which should not exist.")
 
 def test_ordinal_encoding(iris_data_config):
     """

@@ -6,10 +6,9 @@
 #   python -m pytest -v tests/data_hooks/tests_encoding.py
 #######################################################################
 
-import pytest
-
 import numpy as np
 import pandas as pd
+import pytest
 
 from conftest import DummyDataManager
 from data.hooks import DATA_HOOKS
@@ -38,6 +37,7 @@ def categorical_data_manager():
 One Hot Encoder
 """
 
+### COMMON APPLICATIONS ###
 @pytest.mark.parametrize("feature_cols,expected_newcols", [
     (["binary_categorical"], {'binary_categorical_male', 'binary_categorical_female'}),
     (["trinary_categorical"], {'trinary_categorical_red', 'trinary_categorical_blue', 'trinary_categorical_green'}),
@@ -126,6 +126,66 @@ def test_one_hot_encoding__if_binary(feature_cols, expected_newcols, categorical
     invlaid_cols = result_cols - (expected_newcols.union(too_keep_cols))
     if len(invlaid_cols) > 0:
         pytest.fail(f"Found features '{invlaid_cols}' which should not exist.")
+
+### EDGE CASE TESTS ###
+@pytest.mark.xfail(raises=ValueError, strict=True)
+def test_one_hot_encoding__unknown_in_test__fail_by_default(categorical_data_manager):
+    """
+    Confirm that, by default, trying to encode a category which didn't exist in training will fail
+    """
+    # Badly formed dataset with a color which didn't exist in the dataset
+    bad_test_df = pd.DataFrame.from_dict({
+        "binary_categorical": ['male', 'male', 'female', 'female', 'male', 'female'],
+        # Note the "yellow" color that is now here
+        "trinary_categorical": ['red', 'blue', 'green', 'yellow', 'green', 'blue'],
+        "ordinal": ['low', 'medium', 'high', 'high', 'medium', 'low'],
+        "binary_categorical_with_nan": ['male', 'male', 'female', 'female', np.nan, 'female'],
+        "trinary_categorical_with_nan": ['red', np.nan, 'green', 'red', 'green', 'blue'],
+        "ordinal_with_nan": ['low', 'medium', 'high', np.nan, 'medium', 'low'],
+        "dummy_continuous": [1, 2, 3, 4, 5, 6],
+        "dummy_continuous_with_nan": [np.nan, 2, 3, 4, 5, 6],
+        "oops_half_nans": ['low', np.nan, 'high', np.nan, 'medium', np.nan],
+        "oops_all_bob": ['bob', 'bob', 'bob', 'bob', 'bob', 'bob'],
+        "oops_all_nan": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]
+    })
+    bad_data_manager = DummyDataManager(bad_test_df)
+
+    # Run the OneHotEncoder hook, focusing on the problematic code
+    hook_cls = DATA_HOOKS.get('one_hot_encode', None)
+    ohe = hook_cls.from_config(config={'features': ['trinary_categorical']})
+    # This should fail
+    ohe.run_fitted(categorical_data_manager, bad_data_manager)
+
+def test_one_hot_encoding__unknown_in_test__handle_unknown_warning(categorical_data_manager):
+    """
+    Confirm that the user can configure the underlying SKLearn impl. to no longer fail
+    """
+    # Badly formed dataset with a color which didn't exist in the dataset
+    bad_test_df = pd.DataFrame.from_dict({
+        "binary_categorical": ['male', 'male', 'female', 'female', 'male', 'female'],
+        # Note the "yellow" color that is now here, but isn't in the original `categorical_data_manager`
+        "trinary_categorical": ['red', 'blue', 'green', 'yellow', 'green', 'blue'],
+        "ordinal": ['low', 'medium', 'high', 'high', 'medium', 'low'],
+        "binary_categorical_with_nan": ['male', 'male', 'female', 'female', np.nan, 'female'],
+        "trinary_categorical_with_nan": ['red', np.nan, 'green', 'red', 'green', 'blue'],
+        "ordinal_with_nan": ['low', 'medium', 'high', np.nan, 'medium', 'low'],
+        "dummy_continuous": [1, 2, 3, 4, 5, 6],
+        "dummy_continuous_with_nan": [np.nan, 2, 3, 4, 5, 6],
+        "oops_half_nans": ['low', np.nan, 'high', np.nan, 'medium', np.nan],
+        "oops_all_bob": ['bob', 'bob', 'bob', 'bob', 'bob', 'bob'],
+        "oops_all_nan": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]
+    })
+    bad_data_manager = DummyDataManager(bad_test_df)
+
+    # Run the OneHotEncoder hook, focusing on the problematic code
+    hook_cls = DATA_HOOKS.get('one_hot_encode', None)
+    ohe = hook_cls.from_config(config={
+        'features': ['trinary_categorical'],
+        'handle_unknown': 'warn'
+    })
+    # This should produce a warning
+    with pytest.warns(UserWarning):
+        ohe.run_fitted(categorical_data_manager, bad_data_manager)
 
 def test_ordinal_encoding(iris_data_config):
     """

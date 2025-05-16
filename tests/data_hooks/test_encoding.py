@@ -66,6 +66,11 @@ def test_one_hot_encoding__default(feature_cols, expected_newcols, categorical_d
     if len(missing_expected_cols) > 0:
         pytest.fail(f"Expected new features '{expected_newcols}', missing '{missing_expected_cols}'")
 
+    # Confirm the contents of each feature contain only 0s and 1s
+    for c in expected_newcols:
+        value_set = set(result.data.loc[:, c])
+        assert value_set - {0, 1} == set()
+
     # Confirm all the features we expected to remain are still there
     missing_kept_cols = too_keep_cols - result_cols
     if len(missing_kept_cols) > 0:
@@ -111,6 +116,11 @@ def test_one_hot_encoding__if_binary(feature_cols, expected_newcols, categorical
     missing_expected_cols = expected_newcols - result_cols
     if len(missing_expected_cols) > 0:
         pytest.fail(f"Expected new features '{expected_newcols}', missing '{missing_expected_cols}'")
+
+    # Confirm the contents of each feature contain only 0s and 1s
+    for c in expected_newcols:
+        value_set = set(result.data.loc[:, c])
+        assert value_set - {0, 1} == set()
 
     # Confirm all the features we expected to remain are still there
     missing_kept_cols = too_keep_cols - result_cols

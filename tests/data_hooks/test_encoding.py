@@ -202,6 +202,7 @@ def test_one_hot_encoding__unknown_in_test__handle_unknown_warning(categorical_d
 === OrdinalEncoding ===
 """
 
+### COMMON APPLICATIONS ###
 @pytest.mark.parametrize("feature_cols,cat_order", [
     (["binary_categorical"], ['male', 'female']),
     (["trinary_categorical"], ['red', 'green', 'blue']),
@@ -249,3 +250,71 @@ def test_ordinal_encoding__default(feature_cols, cat_order, categorical_data_man
                 pytest.fail(
                     f"Values in column '{c}' had unknown values {bad_vals} after Ordinal Encoding."
                 )
+
+### EDGE CASE TESTS ###
+@pytest.mark.xfail(raises=ValueError, strict=True)
+def test_ordinal_encoding__fail_on_nan(categorical_data_manager):
+    # Run the OrdinalEncoder hook
+    hook_cls = DATA_HOOKS.get('ordinal_encode', None)
+    ohe = hook_cls.from_config(config={
+        'features': ['binary_categorical_with_nan'],
+        # As we're matching SKLearn's implementation, specifying None as part of the list should still fail
+        'categories': ['male', 'female', None]
+    })
+    result = ohe.run(categorical_data_manager)
+
+def test_ordinal_encoding__handle_nan_as_unknown(categorical_data_manager):
+    # Setup
+    target_col = 'binary_categorical_with_nan'
+    categories = ['male', 'female']
+    unknown_value = -1
+
+    # Run the OrdinalEncoder hook
+    hook_cls = DATA_HOOKS.get('ordinal_encode', None)
+    ohe = hook_cls.from_config(config={
+        'features': [target_col],
+        # As we're matching SKLearn's implementation, specifying None as part of the list should still fail
+        'categories': categories,
+        'handle_unknown': 'use_encoded_value',
+        'unknown_value': unknown_value
+    })
+    result = ohe.run(categorical_data_manager)
+
+    # Confirm that the column now only contains integers from -1 to n
+    value_set = set(result.data.loc[:, target_col])
+
+    # Generate a mapping of values to ordinal positions
+    ordinal_map = {v: i for i, v in enumerate(categories)}
+    expected_set = {i for i in ordinal_map.values()}
+
+    # Confirm no unusual values were generated
+    delta_set = value_set - expected_set - {unknown_value}
+    if len(delta_set) > 0:
+        pytest.fail(
+            f"Ordinal Encoder created unknown values {delta_set} when only {expected_set} should have been present"
+        )
+
+    # Confirm that non-NaN features were mapped correctly
+    for v in categories:
+        in_df = categorical_data_manager.data
+        v_df = in_df.loc[in_df[target_col] == v, target_col]
+        v_idx = v_df.index
+        v_int = ordinal_map[v]
+        bad_vals = set(result.data.loc[v_idx, target_col]) - {v_int}
+        if len(bad_vals) > 0:
+            pytest.fail(
+                f"Values in column '{target_col}' had unknown values {bad_vals} after Ordinal Encoding."
+            )
+
+    # Confirm that NaN features were mapped correctly
+    in_df = categorical_data_manager.data
+    v_df = in_df.loc[in_df[target_col].isna(), target_col]
+    v_idx = v_df.index
+    v_int = unknown_value
+    bad_vals = set(result.data.loc[v_idx, target_col]) - {v_int}
+    if len(bad_vals) > 0:
+        pytest.fail(
+            f"NaN values in column '{target_col}' should all be { {unknown_value} }; "
+            f"values {bad_vals} were erroneously present."
+        )
+

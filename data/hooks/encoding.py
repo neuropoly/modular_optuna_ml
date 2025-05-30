@@ -475,7 +475,7 @@ class LadderEncoding(FittedDataHook):
             rung_val = rung_df.any(axis="columns")
 
             # Generate a string representing the combination of columns which will be grouped
-            group_str = "|".join(g)
+            group_str = "|".join([str(x) for x in g])
 
             # Generate the corresponding column's name, but only if we had a prior group (the first col will be dropped)
             col_name = ""

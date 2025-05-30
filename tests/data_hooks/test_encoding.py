@@ -25,6 +25,7 @@ def categorical_data_manager():
         "ordinal_with_nan": ['low', 'medium', 'high', np.nan, 'medium', 'low'],
         "dummy_continuous": [1, 2, 3, 4, 5, 6],
         "dummy_continuous_with_nan": [np.nan, 2, 3, 4, 5, 6],
+        "homogenous_with_nans": [1, 1, np.nan, 1, np.nan, np.nan],
         "oops_half_nans": ['low', np.nan, 'high', np.nan, 'medium', np.nan],
         "oops_all_bob": ['bob', 'bob', 'bob', 'bob', 'bob', 'bob'],
         "oops_all_nan": [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]
@@ -214,11 +215,11 @@ def test_one_hot_encoding__unknown_in_test__handle_unknown_warning(categorical_d
 def test_ordinal_encoding__default(feature_cols, cat_order, categorical_data_manager):
     # Run the OrdinalEncoder hook
     hook_cls = DATA_HOOKS.get('ordinal_encode', None)
-    ohe = hook_cls.from_config(config={
+    ore = hook_cls.from_config(config={
         'features': feature_cols,
         'categories': cat_order
     })
-    result = ohe.run(categorical_data_manager)
+    result = ore.run(categorical_data_manager)
 
     for i, c in enumerate(feature_cols):
         # Confirm that the column now only contains integers from 0 to n
@@ -256,12 +257,12 @@ def test_ordinal_encoding__default(feature_cols, cat_order, categorical_data_man
 def test_ordinal_encoding__fail_on_nan(categorical_data_manager):
     # Run the OrdinalEncoder hook
     hook_cls = DATA_HOOKS.get('ordinal_encode', None)
-    ohe = hook_cls.from_config(config={
+    ore = hook_cls.from_config(config={
         'features': ['binary_categorical_with_nan'],
         # As we're matching SKLearn's implementation, specifying None as part of the list should still fail
         'categories': ['male', 'female', None]
     })
-    result = ohe.run(categorical_data_manager)
+    result = ore.run(categorical_data_manager)
 
 def test_ordinal_encoding__handle_nan_as_unknown(categorical_data_manager):
     # Setup
@@ -271,14 +272,14 @@ def test_ordinal_encoding__handle_nan_as_unknown(categorical_data_manager):
 
     # Run the OrdinalEncoder hook
     hook_cls = DATA_HOOKS.get('ordinal_encode', None)
-    ohe = hook_cls.from_config(config={
+    ore = hook_cls.from_config(config={
         'features': [target_col],
         # As we're matching SKLearn's implementation, specifying None as part of the list should still fail
         'categories': categories,
         'handle_unknown': 'use_encoded_value',
         'unknown_value': unknown_value
     })
-    result = ohe.run(categorical_data_manager)
+    result = ore.run(categorical_data_manager)
 
     # Confirm that the column now only contains integers from -1 to n
     value_set = set(result.data.loc[:, target_col])
@@ -318,3 +319,68 @@ def test_ordinal_encoding__handle_nan_as_unknown(categorical_data_manager):
             f"values {bad_vals} were erroneously present."
         )
 
+"""
+=== LadderEncoding ===
+"""
+
+@pytest.mark.parametrize("feature_col,cat_order", [
+    ("binary_categorical", ['male', 'female']),
+    ("trinary_categorical", ['red', 'green', 'blue']),
+    ("ordinal", ['low', 'medium', 'high']),
+    # NaNs are ignored by default
+    ("binary_categorical_with_nan", ['male', 'female']),
+    ("trinary_categorical_with_nan", ['red', 'green', 'blue']),
+])
+def test_ladder_encoding__default(feature_col, cat_order, categorical_data_manager):
+    # Run the Ladder Encoder hook
+    hook_cls = DATA_HOOKS.get('ladder_encode', None)
+    ladder = hook_cls.from_config(config={
+        'feature': feature_col,
+        'order': cat_order
+    })
+    result = ladder.run(categorical_data_manager)
+
+    # Confirm that the old column was removed
+    assert feature_col not in result.features()
+
+    # Confirm that all columns which were supposed to be generated were
+    expected_cols = [f"{feature_col} ({cat_order[i]} <- {cat_order[i+1]})" for i in range(len(cat_order)-1)]
+    missing_cols = set(expected_cols) - set(result.features())
+    if len(missing_cols) != 0:
+        pytest.fail(f'Output of ladder encoder was missing columns "{missing_cols}"; '
+                    f'produced columns "{set(result.features())}" instead')
+
+    # Confirm that all other columns remained untouched
+    preserved_cols = set(categorical_data_manager.features()) - {feature_col}
+    lost_cols = set(preserved_cols) - set(result.features())
+    if len(lost_cols) > 0:
+        pytest.fail(f'Output of ladder encoder deleted columns "{missing_cols}" which should have bee preserved.')
+
+
+@pytest.mark.xfail(
+    reason="Ladder Encoding makes no sense in the context of a single feature",
+    raises=ValueError
+)
+def test_ladder_encoding__fail_on_single_feature(categorical_data_manager):
+    # Run the Ladder Encoder hook
+    hook_cls = DATA_HOOKS.get('ladder_encode', None)
+    ladder = hook_cls.from_config(config={
+        'feature': ["oops_all_bob"],
+        'order': ["bob"]
+    })
+    ladder.run(categorical_data_manager)
+
+
+def test_ladder_encoding__work_with_missing_steps(categorical_data_manager):
+    """
+    # Ladder encoding should still work if a "step" isn't seen in the data;
+    # it will just be grouped in with an adjacent step instead
+    """
+    # Run the Ladder Encoder hook
+    hook_cls = DATA_HOOKS.get('ladder_encode', None)
+    ladder = hook_cls.from_config(config={
+        'feature': "trinary_categorical",
+        'order': ['red', 'green', 'yellow', 'blue']  # Yellow doesn't exist
+    })
+    result = ladder.run(categorical_data_manager)
+    print(result)

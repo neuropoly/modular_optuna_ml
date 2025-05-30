@@ -383,4 +383,22 @@ def test_ladder_encoding__work_with_missing_steps(categorical_data_manager):
         'order': ['red', 'green', 'yellow', 'blue']  # Yellow doesn't exist
     })
     result = ladder.run(categorical_data_manager)
-    print(result)
+
+    # Confirm that the old column was removed
+    assert "trinary_categorical" not in result.features()
+
+    # Confirm that all columns in order are present in the result
+    expected_cols = {
+        'trinary_categorical (red <- green)',
+        'trinary_categorical (green <- yellow|blue)'
+    }
+    missing_cols = expected_cols - set(result.features())
+    if len(missing_cols) != 0:
+        pytest.fail(f'Output of ladder encoder was missing columns "{missing_cols}"; '
+                    f'produced columns "{set(result.features())}" instead')
+
+    # Confirm that all other columns remained untouched
+    preserved_cols = set(categorical_data_manager.features()) - {"trinary_categorical"}
+    lost_cols = set(preserved_cols) - set(result.features())
+    if len(lost_cols) > 0:
+        pytest.fail(f'Output of ladder encoder deleted columns "{missing_cols}" which should have bee preserved.')

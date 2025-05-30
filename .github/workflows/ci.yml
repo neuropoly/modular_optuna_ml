@@ -42,4 +42,4 @@ jobs:
         shell: bash -l {0}  # Ensures the Conda environment is properly loaded
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)
-          pytest -v tests/tests_encoding.py
+          pytest

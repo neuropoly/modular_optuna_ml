@@ -396,8 +396,10 @@ class LadderEncoding(FittedDataHook):
         # Iterate through the columns in the OHE in our specified order to identity clusters of infrequent groups
         col_group = []
         for c in self.order:
-            # If this column doesn't exist in the OHE, skip it entirely
+            # If this column doesn't exist in the OHE, treat it as frequency 0 and add a homogenous column to the ohe_df
             if c not in ohe_df.columns:
+                col_group.append(c)
+                ohe_df[c] = 0
                 continue
 
             # Otherwise, append it to our current column group
@@ -475,7 +477,7 @@ class LadderEncoding(FittedDataHook):
             rung_val = rung_df.any(axis="columns")
 
             # Generate a string representing the combination of columns which will be grouped
-            group_str = "|".join(g)
+            group_str = "|".join([str(x) for x in g])
 
             # Generate the corresponding column's name, but only if we had a prior group (the first col will be dropped)
             col_name = ""

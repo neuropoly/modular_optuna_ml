@@ -10,7 +10,6 @@ from config.utils import default_as, is_float, is_int, is_list, is_not_null, par
 from data import BaseDataManager
 from data.hooks import registered_data_hook
 from data.hooks.base import FittedDataHook
-from data.mixins import MultiFeatureMixin
 
 
 @registered_data_hook("one_hot_encode")
@@ -68,28 +67,22 @@ class OneHotEncoding(FittedDataHook):
         return cls(config, logger=logger)
 
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
-        # If this is multi-feature dataset, sub-features can be selected
-        if isinstance(x, MultiFeatureMixin):
-            # Update the list of tracked features based on the dataset
-            self.update_tracked_features(x)
+        # Update the list of tracked features based on the dataset
+        self.update_tracked_features(x)
 
-            # Fit to and transform the training data first
-            x: BaseDataManager | MultiFeatureMixin
-            tmp_x = x.get_features(self.tracked_features)
-            # noinspection PyUnresolvedReferences
-            tmp_x = self.backing_encoder.fit_transform(tmp_x.as_array())
-            # Densify result if it is in a sparse format
-            if hasattr(tmp_x, "todense"):
-                tmp_x = tmp_x.todense()
+        # Fit to and transform the training data first
+        tmp_x = x.get_features(self.tracked_features)
+        # noinspection PyUnresolvedReferences
+        tmp_x = self.backing_encoder.fit_transform(tmp_x.as_array())
+        # Densify result if it is in a sparse format
+        if hasattr(tmp_x, "todense"):
+            tmp_x = tmp_x.todense()
 
-            # Generate the new feature names based on this transform, and delete the old ones!
-            new_features = self.backing_encoder.get_feature_names_out(self.tracked_features)
-            x_out = x.drop_features(self.tracked_features)
-            x_out = x_out.set_features(new_features, tmp_x)
-        # Otherwise, just fit and transform everything in bulk
-        # TODO: Implement a method of converting back to the original DataManager type
-        else:
-            x_out = self.backing_encoder.fit_transform(x.as_array())
+        # Generate the new feature names based on this transform, and delete the old ones!
+        new_features = self.backing_encoder.get_feature_names_out(self.tracked_features)
+        x_out = x.drop_features(self.tracked_features)
+        x_out = x_out.set_features(new_features, tmp_x)
+
         return x_out
 
     def run_fitted(self,
@@ -98,29 +91,20 @@ class OneHotEncoding(FittedDataHook):
             y_train: Optional[BaseDataManager] = None,
             y_test: Optional[BaseDataManager] = None
         ) -> (BaseDataManager, BaseDataManager):
-        # If this is multi-feature dataset, sub-features can be selected
-        if isinstance(x_train, MultiFeatureMixin):
-            # Fit to and transform the training data first
-            x_train: BaseDataManager | MultiFeatureMixin
-            train_out = self.run(x_train, y_train)
+        # Fit to and transform the training data first
+        train_out = self.run(x_train, y_train)
 
-            # Generate the new feature names based on this transform, and delete the old ones!
-            new_features = self.backing_encoder.get_feature_names_out(self.tracked_features)
+        # Generate the new feature names based on this transform, and delete the old ones!
+        new_features = self.backing_encoder.get_feature_names_out(self.tracked_features)
 
-            # Then ONLY transform the testing data
-            x_test: BaseDataManager | MultiFeatureMixin
-            tmp_test: BaseDataManager | MultiFeatureMixin = x_test.get_features(self.tracked_features)
-            tmp_test = self.backing_encoder.transform(tmp_test.as_array())
-            if hasattr(tmp_test, "todense"):
-                tmp_test = tmp_test.todense()
-            test_out = x_test.drop_features(self.tracked_features)
-            test_out = test_out.set_features(new_features, tmp_test)
+        # Then ONLY transform the testing data
+        tmp_test = x_test.get_features(self.tracked_features)
+        tmp_test = self.backing_encoder.transform(tmp_test.as_array())
+        if hasattr(tmp_test, "todense"):
+            tmp_test = tmp_test.todense()
+        test_out = x_test.drop_features(self.tracked_features)
+        test_out = test_out.set_features(new_features, tmp_test)
 
-        # Otherwise, just fit and transform everything in bulk
-        # TODO: Implement a method of converting back to the original DataManager type
-        else:
-            train_out = self.backing_encoder.fit_transform(x_train.as_array())
-            test_out = self.backing_encoder.fit_transform(x_test.as_array())
         return train_out, test_out
 
     def update_tracked_features(self, x):
@@ -202,18 +186,14 @@ class OrdinalEncoding(FittedDataHook):
 
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
         # If this is a multi-feature dataset, select the relevant features
-        if isinstance(x, MultiFeatureMixin):
-            self.update_tracked_features(x)
-            tmp_x = x.get_features(self.tracked_features).as_array()
+        self.update_tracked_features(x)
+        tmp_x = x.get_features(self.tracked_features).as_array()
 
-            # Fit+transform (for training) the ordinal encoder
-            tmp_x = self.backing_encoder.fit_transform(tmp_x)
+        # Fit+transform (for training) the ordinal encoder
+        tmp_x = self.backing_encoder.fit_transform(tmp_x)
 
-            # Replace them with the new columns
-            x_out = x.set_features(self.tracked_features, tmp_x)
-        else:
-            # Not a multi-feature dataset, so encode the entire array
-            x_out = self.backing_encoder.fit_transform(x.as_array())
+        # Replace them with the new columns
+        x_out = x.set_features(self.tracked_features, tmp_x)
 
         return x_out
 
@@ -223,19 +203,14 @@ class OrdinalEncoding(FittedDataHook):
                    y_train: Optional[BaseDataManager] = None,
                    y_test: Optional[BaseDataManager] = None
                    ) -> (BaseDataManager, BaseDataManager):
-        if isinstance(x_train, MultiFeatureMixin):
-            # Fit+transform on the training data
-            train_out = self.run(x_train, y_train)
+        # Fit+transform on the training data
+        train_out = self.run(x_train, y_train)
 
-            # Transform (only) the test data
-            tmp_test = x_test.get_features(self.tracked_features).as_array()
-            tmp_test = self.backing_encoder.transform(tmp_test)
-            test_out = x_test.drop_features(self.tracked_features)
-            test_out = test_out.set_features(self.tracked_features, tmp_test)
-        else:
-            # Encode the entire arrays when not using multi-feature
-            train_out = self.backing_encoder.fit_transform(x_train.as_array())
-            test_out = self.backing_encoder.transform(x_test.as_array())
+        # Transform (only) the test data
+        tmp_test = x_test.get_features(self.tracked_features).as_array()
+        tmp_test = self.backing_encoder.transform(tmp_test)
+        test_out = x_test.drop_features(self.tracked_features)
+        test_out = test_out.set_features(self.tracked_features, tmp_test)
 
         return train_out, test_out
 
@@ -366,27 +341,21 @@ class LadderEncoding(FittedDataHook):
         return cls(config, logger=logger)
 
     def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
-        # If this is multi-feature dataset, sub-features can be selected
-        if isinstance(x, MultiFeatureMixin):
-            # Fit to and transform the training data first
-            x: BaseDataManager | MultiFeatureMixin
+        # Setup
+        sub_x = x.get_features([self.feature])
 
-            # Setup
-            sub_x = x.get_features([self.feature])
+        # Fit this model to the provided feature subset
+        x_df = self.fit(sub_x)
 
-            # Fit this model to the provided feature subset
-            x_df = self.fit(sub_x)
+        # Use the (now fit) encoder to generate our encoded data
+        x_df = self.ohe_to_ladder(x_df)
 
-            # Use the (now fit) encoder to generate our encoded data
-            x_df = self.ohe_to_ladder(x_df)
+        # Update the dataset using these new feature names
+        x_out = x.drop_features([self.feature])
+        x_out = x_out.set_features(x_df.columns, x_df.to_numpy())
 
-            # Update the dataset using these new feature names
-            x_out = x.drop_features([self.feature])
-            x_out = x_out.set_features(x_df.columns, x_df.to_numpy())
-            x_out: MultiFeatureMixin | BaseDataManager
-
-            # Return the result
-            return x_out
+        # Return the result
+        return x_out
 
     def fit(self, x):
         """
@@ -461,31 +430,24 @@ class LadderEncoding(FittedDataHook):
             y_train: Optional[BaseDataManager] = None,
             y_test: Optional[BaseDataManager] = None
         ) -> (BaseDataManager, BaseDataManager):
-        # If this is multi-feature dataset, sub-features can be selected
-        if isinstance(x_train, MultiFeatureMixin):
-            # Fit to and transform the training data first
-            x_train: BaseDataManager | MultiFeatureMixin
-            x_test: BaseDataManager | MultiFeatureMixin
-            train_out = self.run(x_train, y_train)
+        # Fit to and transform the training data first
+        train_out = self.run(x_train, y_train)
 
-            # Use the now-fit encoder to transform our testing input
-            sub_x_train: BaseDataManager | MultiFeatureMixin = x_test.get_features([self.feature])
-            sub_x_train = self.backing_ohe_encoder.transform(sub_x_train.as_array())
+        # Use the now-fit encoder to transform our testing input
+        sub_x_train = x_test.get_features([self.feature])
+        sub_x_train = self.backing_ohe_encoder.transform(sub_x_train.as_array())
 
-            ohe_feature_cols = self.backing_ohe_encoder.get_feature_names_out([self.feature])
+        ohe_feature_cols = self.backing_ohe_encoder.get_feature_names_out([self.feature])
 
-            # Convert it to a dataframe for ease of use
-            ohe_df = pd.DataFrame(sub_x_train, columns=ohe_feature_cols)
+        # Convert it to a dataframe for ease of use
+        ohe_df = pd.DataFrame(sub_x_train, columns=ohe_feature_cols)
 
-            x_df = self.ohe_to_ladder(ohe_df)
+        x_df = self.ohe_to_ladder(ohe_df)
 
-            # Update the testing dataset with these results
-            x_test = x_test.drop_features([self.feature])
-            test_out = x_test.set_features(x_df.columns, x_df.to_numpy())
+        # Update the testing dataset with these results
+        x_test = x_test.drop_features([self.feature])
+        test_out = x_test.set_features(x_df.columns, x_df.to_numpy())
 
-        # Ladder Encoding only makes sense in the context of multiple features; as such, any other type will not work!
-        else:
-            raise NotImplementedError("Ladder Encoding only makes sense in the context of a multi-feature dataset!")
         return train_out, test_out
 
 

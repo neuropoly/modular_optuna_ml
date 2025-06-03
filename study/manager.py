@@ -13,8 +13,6 @@ from sklearn.model_selection import StratifiedKFold
 from config.data import DataConfig
 from config.model import ModelConfig
 from config.study import StudyConfig
-from data import BaseDataManager
-from data.mixins import MultiFeatureMixin
 from study import METRIC_FUNCTIONS, MetricUpdater
 
 UNIVERSAL_DB_ENTRIES = {
@@ -226,13 +224,10 @@ class StudyManager(object):
 
         # Isolate the target column(s) from the dataset
         if self.study_config.target is not None:
-            if not isinstance(data_manager, MultiFeatureMixin):
-                raise TypeError("Tried to target a feature in a dataset which only has a single feature!")
+            if data_manager.n_features() == 1:
+                raise TypeError("Failed to isolated target feature; provided dataset only has 1 feature available!")
             x = data_manager.get_features([c for c in data_manager.features() if c != self.study_config.target])
             y = data_manager.get_features(self.study_config.target)
-            # Why is PyCharm's type hinting so dogshit?
-            x: BaseDataManager | MultiFeatureMixin
-            y: BaseDataManager | MultiFeatureMixin
         else:
             raise NotImplementedError("Unsupervised analyses are not currently supported")
 

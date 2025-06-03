@@ -41,7 +41,7 @@ Each of these entries correspond to the following behaviour in MOOPS:
 * "data_source": The path to the dataset you want to use for this MOOPs run, including the file name *and* its extension!
 * "format": The structure of the data in the data source you specified prior. Currently only 'tabular' is supported (representing data in csv-like formats, such as csv and tsv)
 
-Any arguments past these three will be specific to the format you specified; this is specific to each format type, and in our case adds two other config entries:
+Any arguments past these three will be specific to the format you specified; in our case adds two other config entries:
 
 * "separator": The character(s) used to separate the columns in the text file.
 * "index": The column to use as the index (label) for each sample. If not provided, each row's position is used instead.

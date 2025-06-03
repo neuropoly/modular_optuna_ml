@@ -14,7 +14,7 @@ Like any good data scientist, lets start by looking at the data we will be using
 Based on this, lets aim to run some simple pre-processing throughout the MOOPs run. This will include:
 
 * Drop the 'meta' column, as it contains data more likely to distract the model than to inform it.
-* Encoding 'bar' to be numeric with a One-Hot encoding
+* Encoding 'bar' to be numeric with a One-Hot encoding.
 * Scaling the data in each column so that it abides by a Unit Norm (has a mean of 0, and a standard deviation of 1).
 
 Lets start setting up the configuration file to do this!
@@ -37,9 +37,9 @@ First thing's first, the config needs to specify the where the data it is config
 
 Each of these entries correspond to the following behaviour in MOOPS:
 
-* "label": How studies involving this dataset will be identified; corresponds to the {data} part of the {data}__{model}__{study} table IDs in the final database
+* "label": How studies involving this dataset will be identified; corresponds to the ``{data}`` part of the ``{data}__{model}__{study}`` table ID in the final database
 * "data_source": The path to the dataset you want to use for this MOOPs run, including the file name *and* its extension!
-* "format": The structure of the data in the data source you specified prior. Currently only 'tabular' is supported (representing data in csv-like formats, such as csv and tsv)
+* "format": The structure of the data in the data source you specified prior. Currently only ``tabular`` is supported (representing data in csv-like formats, such as ``csv`` and ``tsv``)
 
 Any arguments past these three will be specific to the format you specified; in our case adds two other config entries:
 

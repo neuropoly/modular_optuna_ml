@@ -2,6 +2,7 @@
 Metric-reporting closures for use in this framework.
 """
 import numpy as np
+import shap
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import balanced_accuracy_score, log_loss, roc_auc_score, precision_score, recall_score, f1_score
 
@@ -100,6 +101,45 @@ def importance_by_permutation(manager: OptunaModelManager, x: BaseDataManager, y
     # Convert it to a cleaned string so the SQLite backend doesn't explode
     importance_vals = clean_val_for_db(importance_vals)
     return importance_vals
+
+def shap_additive(manager: OptunaModelManager, x: BaseDataManager, _: BaseDataManager):
+    """
+    To restore the (raw) values for a given run, run the following snippet:
+
+    ```
+    from io import StringIO
+
+    shap_entry = ... # Load the value you want from the DB; it will be a string
+    with StringIO(val) as sp:
+        shap_vals = np.loadtxt(sp)
+    ```
+
+    `shap_vals` will then be a Numpy array, of size (n,c), where
+        * n is the number of samples in the testing dataset, and
+        * c is the number of features the model was trying to predict
+
+    For categorical targets with more than 2 classes, each class is treated as
+    unique feature by SHAP for the purpose of calculating SHAP values.
+
+    TODO: Save the `shap_values` directly via pickle into a SQLite blob
+    """
+    # Initialize the explainer, using the x data as both the mask and feature list
+    x_arr = x.as_array()
+    explainer = shap.Explainer(
+        manager.get_model(), masker=x_arr, feature_names=x.features()
+    )
+
+    # Calculate the Shapley values from this dataset
+    shap_values = explainer(x_arr)
+
+    # Keep only the "primary" SHAP values, convert them to a string
+    val_str = str(shap_values.values)
+
+    # Remove the brackets; despite Numpy adding them, it cannot parse them after...
+    val_str = val_str.replace("[", "").replace("]", "")
+
+    # Return the result to be saved
+    return val_str
 
 
 """ Sample Reporting """

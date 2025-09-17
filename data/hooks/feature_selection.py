@@ -263,8 +263,7 @@ class RecursiveFeatureElimination(Tunable, FittedDataHook):
     def tune(self, trial: Trial):
         self.prop_tuner.tune(trial)
         # Generate the new backing model based on this setup
-        # TODO: Generalize this to work with continuous targets as well
-        new_lor = LogisticRegression()
+        new_lor = LogisticRegression(solver='saga')
         self.backing_rfe = RFE(estimator=new_lor, n_features_to_select=self.prop_tuner.value)
 
     def tunable_params(self) -> list[TunableParam]:

@@ -8,6 +8,12 @@
       "choices": ["l1", "l2", "elasticnet", null]
     },
     "solver": "saga",
+    "max_iter": {
+        "label": "max_iter",
+        "type": "int",
+        "low": 100,
+        "high": 2000
+    },
     "l1_c": {
       "label": "l1",
       "type": "float",

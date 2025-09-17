@@ -19,5 +19,7 @@ METRIC_FUNCTIONS: dict[str, MetricUpdater] = {
     "importance_by_permutation": importance_by_permutation,
     "shap_additive": shap_additive,
     "correct_samples": correct_samples,
-    "incorrect_samples": incorrect_samples
+    "incorrect_samples": incorrect_samples,
+    "y_true_collector": y_true_collector,
+    "y_pred_proba_collector": y_pred_proba_collector
 }

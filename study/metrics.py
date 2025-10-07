@@ -1,6 +1,8 @@
 """
 Metric-reporting closures for use in this framework.
 """
+import sys
+
 import numpy as np
 import shap
 from sklearn.inspection import permutation_importance
@@ -110,14 +112,32 @@ def shap_additive(manager: OptunaModelManager, x: BaseDataManager, _: BaseDataMa
     ```
     from io import StringIO
 
-    shap_entry = ... # Load the value you want from the DB; it will be a string
-    with StringIO(val) as sp:
-        shap_vals = np.loadtxt(sp)
+    # You can omit the Numpy import if you manually
+    # parse the inner string in the list comp
+    import numpy as np
+
+    # This is the SHAP value within the database you want to parse
+    val = ...
+
+    # Strip the brackets first
+    val = val.strip("{").strip("}")
+    # Split by commas
+    entry_strs = val.split(", ")
+    # Split the dataset by feature name
+    shap_map = dict()
+    for entry_str in entry_strs:
+        # Split the text along the colon to get the feature label back
+        feature_label, shap_value_str = entry_str.split(": ")
+        # Parse the shap value string back into numeric form
+        shap_vals = [list(np.fromstring(x, sep=" ")) for x in shap_value_str.split("\n")]
+        # Add it to the map
+        shap_map[feature_label] = shap_vals
     ```
 
-    `shap_vals` will then be a Numpy array, of size (n,c), where
-        * n is the number of samples in the testing dataset, and
-        * c is the number of features the model was trying to predict
+    Each entry in `shap_map` will be Numpy array of with the following dimensions:
+        * n is the number of samples in the input dataset (train, validate, or test), and
+        * c is the number of categorical classes used during training;
+            If this is binary classification, or a continuous target, c=1.
 
     For categorical targets with more than 2 classes, each class is treated as
     unique feature by SHAP for the purpose of calculating SHAP values.
@@ -133,14 +153,28 @@ def shap_additive(manager: OptunaModelManager, x: BaseDataManager, _: BaseDataMa
     # Calculate the Shapley values from this dataset
     shap_values = explainer(x_arr)
 
-    # Keep only the "primary" SHAP values, convert them to a string
-    val_str = str(shap_values.values)
+    shap_list = list()
+    for i, v in enumerate(shap_values.feature_names):
+        # SHAP auto-reduces the shape of its features if it is targeting
+        # a binary classification OR a continuous metric
+        if len(shap_values.values.shape) < 3:
+            val_str = np.array2string(shap_values.values[:, i], max_line_width=sys.maxsize, threshold=sys.maxsize)
+        else:
+            val_str = np.array2string(shap_values.values[:, i, :], max_line_width=sys.maxsize, threshold=sys.maxsize)
+        # Remove the brackets; despite Numpy adding them, it cannot parse them after...
+        val_str = val_str.replace("[", "").replace("]", "")
+        val_str = f"{v}: {val_str}"
+        shap_list.append(val_str)
 
-    # Remove the brackets; despite Numpy adding them, it cannot parse them after...
-    val_str = val_str.replace("[", "").replace("]", "")
+    # This nonsense is required because Python maps
+    # "/n" to "//n" if you string convert a dict;
+    # why the hell does it do that?!?!?
+    full_str = "{"
+    full_str += ", ".join(shap_list)
+    full_str += "}"
 
     # Return the result to be saved
-    return val_str
+    return full_str
 
 
 """ Sample Reporting """

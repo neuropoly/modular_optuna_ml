@@ -146,12 +146,24 @@ def shap_additive(manager: OptunaModelManager, x: BaseDataManager, _: BaseDataMa
     """
     # Initialize the explainer, using the x data as both the mask and feature list
     x_arr = x.as_array()
-    explainer = shap.Explainer(
-        manager.get_model(), masker=x_arr, feature_names=x.features()
-    )
-
-    # Calculate the Shapley values from this dataset
-    shap_values = explainer(x_arr)
+    model = manager.get_model()
+    try:
+        # Default to the "generic" explainer
+        explainer = shap.Explainer(
+            model, x_arr, feature_names=x.features()
+        )
+        # Calculate the Shapley values from this dataset
+        shap_values = explainer(x_arr)
+    except TypeError as err:
+        # If that failed, try to use the model's "predict" function instead
+        if hasattr(model, "predict"):
+            explainer = shap.Explainer(
+                model.predict, x_arr, feature_names=x.features()
+            )
+            # Calculate the Shapley values from this dataset
+            shap_values = explainer(x_arr)
+        else:
+            raise err
 
     shap_list = list()
     for i, v in enumerate(shap_values.feature_names):

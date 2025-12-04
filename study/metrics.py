@@ -147,6 +147,12 @@ def shap_additive(manager: OptunaModelManager, x: BaseDataManager, _: BaseDataMa
     # Initialize the explainer, using the x data as both the mask and feature list
     x_arr = x.as_array()
     model = manager.get_model()
+
+    if np.unique(x_arr).shape[0] < 2:
+        # SHAP cannot run on a dataset which is entirely homogenous;
+        # return early to avoid an error
+        return "NULL"
+
     try:
         # Default to the "generic" explainer
         explainer = shap.Explainer(

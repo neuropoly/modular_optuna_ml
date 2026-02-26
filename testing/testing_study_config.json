@@ -21,7 +21,8 @@
       "sk_f1_perclass",
       "correct_samples",
       "incorrect_samples",
-      "importance_by_permutation"
+      "importance_by_permutation",
+      "shap_additive"
     ]
   },
   "track_params": true,

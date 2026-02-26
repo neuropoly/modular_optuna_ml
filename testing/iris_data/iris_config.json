@@ -16,8 +16,13 @@
   ],
   "post_split_hooks": [
     {
+      "type": "imputation_simple",
+      "strategy": "most_frequent",
+      "features": ["color", "flower_category", "is_flower", "size"]
+    },
+    {
       "type": "one_hot_encode",
-      "features": ["color", "flower_category"]
+      "features": ["color", "flower_category", "is_flower"]
     },
     {
       "type": "ladder_encode",
@@ -32,6 +37,19 @@
     }, {
       "type": "standard_scaling",
       "run_per_cross": true
+    },
+    {
+      "type": "drop_low_variance",
+      "threshold": 0.0
+    },
+    {
+      "type": "principal_component_analysis",
+      "proportion": {
+        "label": "pca_feature_proportion",
+        "type": "float",
+        "low": 0.1,
+        "high": 0.9
+      }
     },
     {
       "type": "recursive_feature_elimination",

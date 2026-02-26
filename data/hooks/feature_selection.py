@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from optuna import Trial
 from sklearn.decomposition import PCA
-from sklearn.feature_selection import RFE
+from sklearn.feature_selection import RFE, VarianceThreshold
 from sklearn.linear_model import LogisticRegression
 
 from config.utils import default_as, is_float, is_list, parse_data_config_entry
@@ -133,6 +133,81 @@ class FeatureNullityDrop(NullityDrop):
             raise IndexError(f"Data Hook of class `feature_drop_null` tried to drop all remaining features in a dataset! "
                              f"Consider reducing the threshold somewhat, or doing imputation instead.")
         return x.drop_features(drop_idx)
+
+
+## Feature selection by homogeneity
+@registered_data_hook("drop_low_variance")
+class VarianceDrop(FittedDataHook):
+    """
+    Thin wrapper for SciKit-Learn's VarianceThreshold class, for use as a data hook within MOOP.
+
+    Runs additional checks on top of the default implementation provided by SciKit-Learn:
+        * Ensures the resulting dataset always contains at least 1 feature.
+
+    Example usage:
+    {
+      "type": "drop_low_variance",
+      "threshold": 0.1
+    }
+    """
+    def __init__(self, config, **kwargs):
+        # TODO: make this tunable
+        super().__init__(config, **kwargs)
+
+        # Get the variance threshold
+        threshold = parse_data_config_entry(
+            "threshold", config,
+            default_as(0.0, self.logger), is_float(self.logger)
+        )
+
+        # Build the wrapped VarianceThreshold object
+        self.threshold = threshold
+        self.selected_features: list[str] | None = None
+
+    @classmethod
+    def from_config(cls, config: dict, logger: Logger = Logger.root) -> Self:
+        return cls(config=config, logger=logger)
+
+    def run(self, x: BaseDataManager, y: Optional[BaseDataManager] = None) -> BaseDataManager:
+        # If x contains only one feature already, just return that feature, as RFE has a stroke otherwise
+        if x.n_features() == 1:
+            self.logger.warning("Only one feature in the dataset was found; "
+                                "dropping any further would result in a null dataset."
+                                "Original (unmodified) dataset returned instead.")
+            return x
+
+        # Fit the model to the dataset
+        vt = VarianceThreshold(threshold=self.threshold)
+        vt.fit(x.as_array(), np.ravel(y.as_array()))  # Ravel prevents some warning spam
+
+        # Select only the features with variance less than the threshold
+        self.selected_features = vt.get_feature_names_out(x.features())
+
+        # Ensure that at least one feature was kept
+        if self.selected_features.shape[0] < 1:
+            # Find the
+            highest_var = np.max(vt.variances_)
+            highest_var_feature = list(x.features())[np.argmax(vt.variances_)]
+            self.selected_features = [highest_var_feature]
+            self.logger.warning(
+                f"Low-variance filter almost dropped all features; kept highest variance "
+                f"feature ({highest_var_feature}, variance {highest_var}) alone to prevent crash!"
+            )
+
+        # Return the copy of x containing only these features
+        x_out = x.get_features(self.selected_features)
+        return x_out
+
+    def run_fitted(self, x_train: BaseDataManager, x_test: Optional[BaseDataManager],
+                   y_train: Optional[BaseDataManager] = None, y_test: Optional[BaseDataManager] = None) -> \
+            tuple[BaseDataManager, BaseDataManager]:
+        # Run the fitted analysis first
+        train_out = self.run(x_train, y_train)
+
+        # Use the same set of features to filter the x_test set
+        test_out = x_test.get_features(self.selected_features)
+
+        return train_out, test_out
 
 
 ### Principal Component Analysis ###
@@ -263,8 +338,7 @@ class RecursiveFeatureElimination(Tunable, FittedDataHook):
     def tune(self, trial: Trial):
         self.prop_tuner.tune(trial)
         # Generate the new backing model based on this setup
-        # TODO: Generalize this to work with continuous targets as well
-        new_lor = LogisticRegression()
+        new_lor = LogisticRegression(solver='saga')
         self.backing_rfe = RFE(estimator=new_lor, n_features_to_select=self.prop_tuner.value)
 
     def tunable_params(self) -> list[TunableParam]:

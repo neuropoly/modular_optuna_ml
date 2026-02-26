@@ -7,5 +7,6 @@ dependencies:
   - ca-certificates
   - openssl
   - scikit-learn
-  - pandas
+  - pandas<3
   - pytest
+  - shap

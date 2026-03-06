@@ -114,7 +114,6 @@ class StudyConfig(object):
         # Return the results
         return train_hooks, validate_hooks, test_hooks
 
-
     def parse_output_path(self):
         # TODO: Allow for non-filepath based storage options
         return parse_data_config_entry(

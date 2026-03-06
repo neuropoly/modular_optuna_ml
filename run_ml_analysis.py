@@ -22,7 +22,15 @@ from config.study import StudyConfig
 from study.manager import StudyManager
 
 
-def main(data_config: Path, model_config: Path, study_config: Path, timeout: int, overwrite: bool, debug: bool):
+def main(
+    data_config: Path,
+    model_config: Path,
+    study_config: Path,
+    timeout: int,
+    overwrite: bool,
+    replace_incomplete: bool,
+    debug: bool
+):
     # Parse the configuration files
     data_config = DataConfig.from_json_file(data_config)
     model_config = ModelConfig.from_json_file(model_config)
@@ -35,6 +43,7 @@ def main(data_config: Path, model_config: Path, study_config: Path, timeout: int
         study_config,
         timeout=timeout,
         overwrite=overwrite,
+        replace_incomplete=replace_incomplete,
         debug=debug
     )
 
@@ -68,6 +77,10 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--overwrite', action='store_true',
+        help="Whether the program should be allowed to overwrite existing database tables to save its output"
+    )
+    parser.add_argument(
+        '--replace_incomplete', action='store_true',
         help="Whether the program should be allowed to overwrite existing database tables to save its output"
     )
     parser.add_argument(

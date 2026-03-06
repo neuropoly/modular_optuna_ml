@@ -30,8 +30,16 @@ class StudyManager(object):
     Always runs as though we are testing in a multi-replicate, cross-validated way; you can disable this by proxy
     by setting the `n_replicates` and `n_crosses` to be 1.
     """
-    def __init__(self, data_config: DataConfig, model_config: ModelConfig, study_config: StudyConfig,
-                 timeout: int, overwrite: bool, debug: bool):
+    def __init__(
+        self,
+        data_config: DataConfig,
+        model_config: ModelConfig,
+        study_config: StudyConfig,
+        timeout: int,
+        overwrite: bool = False,
+        replace_incomplete: bool = False,
+        debug: bool = False
+    ):
         # Track each of the configs for this analysis
         self.data_config = data_config
         self.model_config = model_config
@@ -40,6 +48,7 @@ class StudyManager(object):
         # Track whether to run the model in overwrite and/or debug mode
         self.timeout = timeout
         self.overwrite = overwrite
+        self.replace_incomplete = replace_incomplete
         self.debug = debug
 
         # Initiate the logger for this study
@@ -113,15 +122,27 @@ class StudyManager(object):
             cur = con.cursor()
 
             # If we're enabling overwrites, delete any table with the same name before proceeding
-            if self.overwrite:
-                # Check if a table with the current study name exists
-                current_tables = cur.execute(
-                    f"SELECT name FROM sqlite_master WHERE type='table' AND name='{self.study_label}'"
-                ).fetchall()
-                table_exists = len(current_tables) > 0
-                # If it does, warn the user and reset it
-                if table_exists:
+            # Get the current table associated with this study (if any)
+            previous_table = cur.execute(
+                f"SELECT name FROM sqlite_master WHERE type='table' AND name='{self.study_label}'"
+            ).fetchone()
+
+            # If it exists, check if we should overwrite it
+            if previous_table is not None:
+                no_prior_replicates = cur.execute(
+                    f"SELECT count(DISTINCT replicate) FROM {self.study_label}"
+                ).fetchone()[0]
+
+                # Check if we should overwrite this table
+                if self.overwrite:
                     self.logger.warning(f"DB table for '{self.study_label}' already existed and was overwritten")
+                    cur.execute(
+                        f"DROP TABLE IF EXISTS {self.study_label};"
+                    )
+                elif self.replace_incomplete and no_prior_replicates < self.study_config.no_replicates:
+                    self.logger.warning(
+                        f"DB table for '{self.study_label}' contained an incomplete study and was overwritten"
+                    )
                     cur.execute(
                         f"DROP TABLE IF EXISTS {self.study_label};"
                     )
@@ -156,7 +177,17 @@ class StudyManager(object):
                 )
             except sqlite3.OperationalError as err:
                 if "already exists" in err.args[0]:
-                    err.args = (f"The DB table for study '{self.study_label}' already exists; use the '--overwrite' flag if you want to overwrite it",)
+                    if no_prior_replicates >= self.study_config.no_replicates:
+                        err.args = (
+                            f"The DB table for the completed study '{self.study_label}' already exists; "
+                            f"use the '--overwrite' flag if you want to overwrite it.",
+                        )
+                    else:
+                        err.args = (
+                            f"A DB table with an incomplete study '{self.study_label}' was found; "
+                            f"use the '--replace_incomplete' or '--overwrite' flags if you "
+                            f"want to re-run the analysis.",
+                        )
                 raise err
 
             # Return the result

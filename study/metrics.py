@@ -148,7 +148,7 @@ def shap_additive(manager: OptunaModelManager, x: BaseDataManager, _: BaseDataMa
     x_arr = x.as_array()
     model = manager.get_model()
 
-    if np.unique(x_arr).shape[0] < 2:
+    if np.unique(x_arr, axis=0).shape[0] < 2:
         # SHAP cannot run on a dataset which is entirely homogenous;
         # return early to avoid an error
         return "NULL"

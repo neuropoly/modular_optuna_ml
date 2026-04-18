@@ -1,8 +1,9 @@
 # Modular Analysis Framework for Large-Scale ML Analyses
 
 This is a framework for automating high-permutation, large scale ML analyses. 
-While it was developed for research into prediction post-surgical outcomes for patients with DCM,
-it can be easily extended to allow for the analysis of any tabular dataset.
+While it was developed for research into prediction post-surgical outcomes for patients with DCM, it can be easily extended to allow for the analysis of any tabular dataset.
+
+For a detailed overview of how to use this tool, please [read the docs](https://modular-optuna-ml.readthedocs.io/en/latest/).
 
 ## Set Up
 
